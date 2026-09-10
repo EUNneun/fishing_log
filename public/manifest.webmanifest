@@ -1,0 +1,11 @@
+{
+  "name": "피싱로그",
+  "short_name": "피싱로그",
+  "lang": "ko-KR",
+  "start_url": "/fishing_log/",
+  "scope": "/fishing_log/",
+  "display": "standalone",
+  "background_color": "#eaf3ff",
+  "theme_color": "#79aef7",
+  "description": "나의 출조 기록과 조과를 한곳에 저장하는 피싱로그"
+}
