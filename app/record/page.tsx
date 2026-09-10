@@ -131,8 +131,7 @@ export default function RecordPage() {
                 required
                 value={form.tripDate}
                 onChange={set("tripDate")}
-                className="block w-full max-w-full min-w-0 box-border"
-                style={{ inlineSize: "100%", maxInlineSize: "100%" }}
+                className="block w-[94%] max-w-[94%] min-w-0 box-border"
               />
             </Field>
 
