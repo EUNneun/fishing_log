@@ -6,6 +6,7 @@ import RecordEditBridge from "./record-edit-bridge";
 import BottomNav from "./bottom-nav";
 import HomeTabsBridge from "./home-tabs-bridge";
 import VersionChecker from "./version-checker";
+import SpeciesRequestBridge from "./species-request-bridge";
 
 export const metadata: Metadata = {
   title: "피싱로그 | 나의 낚시 기록",
@@ -17,5 +18,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body className="antialiased"><VersionChecker /><SettingsRouteBridge /><AppNameBridge /><RecordEditBridge /><HomeTabsBridge />{children}<BottomNav /></body></html>;
+  return <html lang="ko"><body className="antialiased"><VersionChecker /><SettingsRouteBridge /><AppNameBridge /><RecordEditBridge /><HomeTabsBridge /><SpeciesRequestBridge />{children}<BottomNav /></body></html>;
 }
