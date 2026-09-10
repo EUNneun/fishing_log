@@ -4,7 +4,7 @@ import { useEffect, useMemo, useState } from "react";
 import { getHolidayPreset } from "@hyunbinseo/holidays-kr";
 import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
 import { addDoc, collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
-import { Anchor, CalendarDays, List, LogOut, MapPin, Plus, Settings, ShipWheel, WalletCards, Waves } from "lucide-react";
+import { Anchor, CalendarDays, List, LogOut, MapPin, Plus, Settings, ShipWheel, Star, WalletCards, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -27,6 +27,9 @@ type Log = {
   catchCount: number;
   maxSize: number | null;
   memo: string;
+  boatCondition?: number | null;
+  captainSkill?: number | null;
+  mealRating?: number | null;
 };
 
 const freshForm = () => ({
@@ -40,6 +43,9 @@ const freshForm = () => ({
   catchCount: "",
   maxSize: "",
   memo: "",
+  boatCondition: "",
+  captainSkill: "",
+  mealRating: "",
 });
 
 const speciesCharacters = {
@@ -188,6 +194,9 @@ export default function FishingLog() {
         catchCount: Number(form.catchCount),
         maxSize: form.maxSize ? Number(form.maxSize) : null,
         memo: form.memo.trim(),
+        boatCondition: form.boatCondition ? Number(form.boatCondition) : null,
+        captainSkill: form.captainSkill ? Number(form.captainSkill) : null,
+        mealRating: form.mealRating ? Number(form.mealRating) : null,
         createdAt: serverTimestamp(),
       };
       const ref = await addDoc(collection(db, "users", user.uid, "logs"), payload);
@@ -221,6 +230,7 @@ export default function FishingLog() {
   }
 
   const set = (key: keyof ReturnType<typeof freshForm>) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm({ ...form, [key]: e.target.value });
+  const setRating = (key: "boatCondition" | "captainSkill" | "mealRating") => (value: number) => setForm({ ...form, [key]: String(value) });
   const money = new Intl.NumberFormat("ko-KR");
 
   if (!authReady) return <CenteredMessage title="FISH LOG" description="로그인 정보를 확인하는 중입니다." />;
@@ -375,12 +385,25 @@ export default function FishingLog() {
               <Field label="선비"><Input type="number" min="0" required inputMode="numeric" placeholder="원 단위" value={form.fee} onChange={set("fee")} /></Field>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="어종"><NativeSelect required value={form.species} onChange={set("species")} className="w-full"><NativeSelectOption value="">선택</NativeSelectOption>{speciesNames.map((name) => <NativeSelectOption key={name} value={name}>{name}</NativeSelectOption>)}</NativeSelect></Field>
-                <Field label="채비"><Input required placeholder="예: 가지채비" value={form.rig} onChange={set("rig")} /></Field>
+                <Field label="채비 (선택)"><Input placeholder="예: 가지채비" value={form.rig} onChange={set("rig")} /></Field>
               </div>
               <div className="grid grid-cols-2 gap-3">
                 <Field label="조과(마릿수)"><Input type="number" min="0" required inputMode="numeric" placeholder="0" value={form.catchCount} onChange={set("catchCount")} /></Field>
                 <Field label="최대 크기(cm)"><Input type="number" min="0" step="0.1" inputMode="decimal" placeholder="선택" value={form.maxSize} onChange={set("maxSize")} /></Field>
               </div>
+
+              <section className="rounded-2xl border border-[#dbe8fa] bg-white p-4">
+                <div className="mb-3">
+                  <p className="text-sm font-extrabold text-[#496789]">선사 컨디션</p>
+                  <p className="mt-1 text-xs text-[#8aa0be]">선택 평가 · 별 5개 만점</p>
+                </div>
+                <div className="space-y-3">
+                  <StarRating label="배 컨디션" value={Number(form.boatCondition) || 0} onChange={setRating("boatCondition")} />
+                  <StarRating label="선장님 조타 실력" value={Number(form.captainSkill) || 0} onChange={setRating("captainSkill")} />
+                  <StarRating label="간식/식사" value={Number(form.mealRating) || 0} onChange={setRating("mealRating")} />
+                </div>
+              </section>
+
               <Field label="메모 (선택)"><Textarea placeholder="잘 잡힌 시간, 수심, 특이사항 등" value={form.memo} onChange={set("memo")} className="min-h-20" /></Field>
               <Button disabled={saving} type="submit" className="h-12 w-full rounded-xl bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] font-extrabold text-white hover:from-[#4f8ee8] hover:to-[#4db7ea]">{saving ? "저장 중..." : "기록 저장"}</Button>
             </form>
@@ -455,6 +478,41 @@ function Field({ label, children }: { label: string; children: React.ReactNode }
   return <div className="space-y-2"><Label className="text-sm text-[#496789]">{label}</Label>{children}</div>;
 }
 
+function StarRating({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
+  return (
+    <div className="flex items-center justify-between gap-3">
+      <span className="text-sm font-medium text-[#607a9e]">{label}</span>
+      <div className="flex items-center gap-1" role="radiogroup" aria-label={`${label} 별점`}>
+        {[1, 2, 3, 4, 5].map((score) => (
+          <button
+            key={score}
+            type="button"
+            role="radio"
+            aria-checked={value === score}
+            aria-label={`${score}점`}
+            onClick={() => onChange(score)}
+            className={`rounded-md p-0.5 transition ${score <= value ? "text-[#f5b83d]" : "text-[#c8d7e8] hover:text-[#9bb9da]"}`}
+          >
+            <Star className="size-6" fill={score <= value ? "currentColor" : "none"} />
+          </button>
+        ))}
+      </div>
+    </div>
+  );
+}
+
+function RatingSummary({ label, value }: { label: string; value?: number | null }) {
+  if (!value) return null;
+  return (
+    <div className="flex items-center justify-between gap-2">
+      <span>{label}</span>
+      <span className="flex items-center gap-0.5" aria-label={`${label} ${value}점`}>
+        {[1, 2, 3, 4, 5].map((score) => <Star key={score} className={`size-3.5 ${score <= value ? "text-[#f5b83d]" : "text-[#d7e2ef]"}`} fill={score <= value ? "currentColor" : "none"} />)}
+      </span>
+    </div>
+  );
+}
+
 function SpeciesBadge({ species, compact = false, showName = false }: { species: string; compact?: boolean; showName?: boolean }) {
   const character = speciesCharacters[species as SpeciesName] || speciesCharacters["우럭"];
   return (
@@ -468,24 +526,37 @@ function SpeciesBadge({ species, compact = false, showName = false }: { species:
 function LogCards({ logs, money }: { logs: Log[]; money: Intl.NumberFormat }) {
   return (
     <div className="space-y-3">
-      {logs.map((log) => (
-        <article key={log.id} className="rounded-[1.35rem] border border-[#e2edfb] bg-white p-4 shadow-sm shadow-[#5594df]/5">
-          <div className="flex items-start justify-between gap-3">
-            <div>
-              <div className="flex items-center gap-2 text-xs text-[#8298b8]"><CalendarDays className="size-3.5" />{log.tripDate}</div>
-              <h3 className="mt-2 flex items-center gap-2 text-lg font-bold text-[#29456f]"><SpeciesBadge species={log.species} />{log.species} <span className="text-[#3988f2]">{log.catchCount}마리</span></h3>
+      {logs.map((log) => {
+        const hasRatings = Boolean(log.boatCondition || log.captainSkill || log.mealRating);
+        return (
+          <article key={log.id} className="rounded-[1.35rem] border border-[#e2edfb] bg-white p-4 shadow-sm shadow-[#5594df]/5">
+            <div className="flex items-start justify-between gap-3">
+              <div>
+                <div className="flex items-center gap-2 text-xs text-[#8298b8]"><CalendarDays className="size-3.5" />{log.tripDate}</div>
+                <h3 className="mt-2 flex items-center gap-2 text-lg font-bold text-[#29456f]"><SpeciesBadge species={log.species} />{log.species} <span className="text-[#3988f2]">{log.catchCount}마리</span></h3>
+              </div>
+              {log.maxSize && <span className="rounded-full bg-[#e8f3ff] px-3 py-1 text-sm font-bold text-[#3988f2]">최대 {log.maxSize}cm</span>}
             </div>
-            {log.maxSize && <span className="rounded-full bg-[#e8f3ff] px-3 py-1 text-sm font-bold text-[#3988f2]">최대 {log.maxSize}cm</span>}
-          </div>
-          <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-[#607a9e]">
-            <span className="flex items-center gap-2"><MapPin className="size-4 text-[#74a9e8]" />{log.location}</span>
-            <span className="flex items-center gap-2"><ShipWheel className="size-4 text-[#74a9e8]" />{log.boatName}</span>
-            <span className="flex items-center gap-2"><WalletCards className="size-4 text-[#74a9e8]" />{money.format(log.fee)}원</span>
-            <span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]" />{log.weather} · {log.rig}</span>
-          </div>
-          {log.memo && <p className="mt-3 border-t border-[#e6effb] pt-3 text-sm leading-6 text-[#7c91ad]">{log.memo}</p>}
-        </article>
-      ))}
+            <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-[#607a9e]">
+              <span className="flex items-center gap-2"><MapPin className="size-4 text-[#74a9e8]" />{log.location}</span>
+              <span className="flex items-center gap-2"><ShipWheel className="size-4 text-[#74a9e8]" />{log.boatName}</span>
+              <span className="flex items-center gap-2"><WalletCards className="size-4 text-[#74a9e8]" />{money.format(log.fee)}원</span>
+              <span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]" />{log.weather}{log.rig ? ` · ${log.rig}` : ""}</span>
+            </div>
+            {hasRatings && (
+              <div className="mt-3 rounded-xl bg-[#f6faff] px-3 py-2.5 text-xs text-[#6f87a5]">
+                <p className="mb-2 font-bold text-[#496789]">선사 컨디션</p>
+                <div className="space-y-1.5">
+                  <RatingSummary label="배 컨디션" value={log.boatCondition} />
+                  <RatingSummary label="선장님 조타 실력" value={log.captainSkill} />
+                  <RatingSummary label="간식/식사" value={log.mealRating} />
+                </div>
+              </div>
+            )}
+            {log.memo && <p className="mt-3 border-t border-[#e6effb] pt-3 text-sm leading-6 text-[#7c91ad]">{log.memo}</p>}
+          </article>
+        );
+      })}
     </div>
   );
 }
