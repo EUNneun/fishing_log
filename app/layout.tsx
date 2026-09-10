@@ -12,8 +12,9 @@ export const metadata: Metadata = {
     statusBarStyle: "default",
   },
   icons: {
-    icon: "/favicon.svg",
-    shortcut: "/favicon.svg",
+    icon: "/fishing_log/app-icon.svg",
+    shortcut: "/fishing_log/app-icon.svg",
+    apple: "/fishing_log/app-icon.svg",
   },
 };
 
