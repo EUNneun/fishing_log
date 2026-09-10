@@ -7,5 +7,13 @@
   "display": "standalone",
   "background_color": "#eaf3ff",
   "theme_color": "#79aef7",
-  "description": "나의 출조 기록과 조과를 한곳에 저장하는 피싱로그"
+  "description": "나의 출조 기록과 조과를 한곳에 저장하는 피싱로그",
+  "icons": [
+    {
+      "src": "/fishing_log/app-icon.svg",
+      "sizes": "any",
+      "type": "image/svg+xml",
+      "purpose": "any maskable"
+    }
+  ]
 }
