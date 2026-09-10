@@ -1,5 +1,6 @@
 import type { Metadata } from "next";
 import "./globals.css";
+import SettingsRouteBridge from "./settings-route-bridge";
 
 export const metadata: Metadata = {
   title: "FISH LOG | 나의 낚시 기록",
@@ -25,7 +26,10 @@ export default function RootLayout({
 }>) {
   return (
     <html lang="ko">
-      <body className="antialiased">{children}</body>
+      <body className="antialiased">
+        <SettingsRouteBridge />
+        {children}
+      </body>
     </html>
   );
 }
