@@ -1,7 +1,7 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Anchor, CalendarDays, List, MapPin, Plus, ShipWheel, WalletCards, Waves } from "lucide-react";
+import { Anchor, CalendarDays, List, MapPin, Plus, Settings2, ShipWheel, WalletCards, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -25,6 +25,16 @@ const speciesCharacters = {
 type SpeciesName = keyof typeof speciesCharacters;
 const speciesNames = Object.keys(speciesCharacters) as SpeciesName[];
 const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+const regions = ["서해", "남해", "동해", "제주"] as const;
+type Region = typeof regions[number];
+type UserSettings = { region: Region; preferredTides: string };
+
+function tideNumber(date: Date, region: Region) {
+  const anchor = new Date(2026, 8, 10);
+  const diff = Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(anchor.getFullYear(), anchor.getMonth(), anchor.getDate())) / 86400000);
+  const base = region === "서해" ? 6 : 7;
+  return ((base - 1 + diff) % 15 + 15) % 15 + 1;
+}
 
 export default function FishingLog() {
   const [logs, setLogs] = useState<Log[]>([]);
@@ -35,6 +45,10 @@ export default function FishingLog() {
   const [error, setError] = useState("");
   const [selectedDate, setSelectedDate] = useState<Date | undefined>();
   const [calendarMonth, setCalendarMonth] = useState(new Date());
+  const [settingsOpen, setSettingsOpen] = useState(false);
+  const [settingsSaving, setSettingsSaving] = useState(false);
+  const [settings, setSettings] = useState<UserSettings>({ region: "서해", preferredTides: "3,4,5,10,11" });
+  const [holidays, setHolidays] = useState<Record<string, string>>({});
 
   useEffect(() => {
     fetch("/api/logs").then(async (res) => {
@@ -42,6 +56,20 @@ export default function FishingLog() {
       if (!res.ok) throw new Error(data.error || "기록을 불러오지 못했습니다.");
       setLogs(data.logs);
     }).catch((e) => setError(e.message)).finally(() => setLoading(false));
+  }, []);
+
+  useEffect(() => {
+    fetch(`/api/holidays?year=${calendarMonth.getFullYear()}`).then(async (res) => {
+      const data = await res.json();
+      if (res.ok) setHolidays((current) => ({ ...current, ...data.holidays }));
+    }).catch(() => undefined);
+  }, [calendarMonth]);
+
+  useEffect(() => {
+    fetch("/api/settings").then(async (res) => {
+      const data = await res.json();
+      if (res.ok && data.settings) setSettings(data.settings);
+    }).catch(() => undefined);
   }, []);
 
   const totalCatch = useMemo(() => logs.reduce((sum, log) => sum + log.catchCount, 0), [logs]);
@@ -67,6 +95,17 @@ export default function FishingLog() {
     finally { setSaving(false); }
   }
 
+  async function saveSettings(e: React.FormEvent) {
+    e.preventDefault(); setSettingsSaving(true); setError("");
+    try {
+      const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) });
+      const data = await res.json();
+      if (!res.ok) throw new Error(data.error || "설정을 저장하지 못했습니다.");
+      setSettings(data.settings); setSettingsOpen(false);
+    } catch (e) { setError(e instanceof Error ? e.message : "설정을 저장하지 못했습니다."); }
+    finally { setSettingsSaving(false); }
+  }
+
   const set = (key: keyof ReturnType<typeof freshForm>) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm({ ...form, [key]: e.target.value });
   const money = new Intl.NumberFormat("ko-KR");
 
@@ -77,7 +116,7 @@ export default function FishingLog() {
           <div className="absolute -right-12 -top-16 h-52 w-52 rounded-full border-[34px] border-white/20" />
           <div className="relative flex items-center justify-between">
             <div><p className="text-sm font-medium text-white/80">나의 출조 기록</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-white">FISH LOG</h1></div>
-            <div className="flex size-12 items-center justify-center rounded-2xl bg-white/90 text-3xl shadow-lg shadow-[#4387df]/20" aria-label="문어">🐙</div>
+            <div className="flex items-center gap-2"><button type="button" onClick={() => setSettingsOpen(true)} className="flex size-10 items-center justify-center rounded-xl bg-white/25 text-white transition hover:bg-white/35" aria-label="물때 설정"><Settings2 className="size-5" /></button><div className="flex size-12 items-center justify-center rounded-2xl bg-white/90 text-3xl shadow-lg shadow-[#4387df]/20" aria-label="문어">🐙</div></div>
           </div>
           <section className="relative mt-6 rounded-[1.5rem] bg-white/92 p-5 shadow-xl shadow-[#4387df]/15 backdrop-blur">
             <div className="flex items-end justify-between"><div><p className="text-sm text-[#7b94ba]">지금까지 잡은 물고기</p><p className="mt-1 text-4xl font-black text-[#3988f2]">{totalCatch}<span className="ml-1 text-lg font-bold">마리</span></p></div><Waves className="size-10 text-[#5abef5]/40" /></div>
@@ -109,8 +148,14 @@ export default function FishingLog() {
                 components={{ DayButton: (props) => {
                   const dayLogs = logsByDate[dateKey(props.day.date)] || [];
                   const species = [...new Set(dayLogs.map((log) => log.species))].slice(0, 3);
-                  return <CalendarDayButton {...props} className="min-w-0 rounded-xl py-1 hover:bg-[#eef6ff] data-[selected-single=true]:bg-[#dceeff] data-[selected-single=true]:text-[#29456f]">
-                    <span className="text-xs font-semibold">{props.day.date.getDate()}</span>
+                  const day = props.day.date.getDay();
+                  const holiday = holidays[dateKey(props.day.date)];
+                  const tide = tideNumber(props.day.date, settings.region);
+                  const preferred = settings.preferredTides.split(/[^0-9]+/).map(Number).includes(tide);
+                  const dateColor = holiday || day === 0 ? "text-[#e45f72]" : day === 6 ? "text-[#438fd7]" : "text-[#536f93]";
+                  return <CalendarDayButton {...props} className="min-w-0 rounded-xl py-1 hover:bg-[#eef6ff] data-[selected-single=true]:bg-[#dceeff] data-[selected-single=true]:text-[#29456f]" title={holiday || undefined}>
+                    <span className={`text-xs font-semibold ${dateColor}`}>{props.day.date.getDate()}</span>
+                    <span className={preferred ? "rounded-full bg-[#fff1b8] px-1 text-[9px] font-extrabold text-[#b17800]" : "text-[9px] text-[#9aacc3]"}>{preferred ? "★ " : ""}{tide}물</span>
                     <span className="flex min-h-5 items-center justify-center -space-x-1">
                       {species.map((name) => <SpeciesBadge key={name} species={name} compact />)}
                     </span>
@@ -125,6 +170,7 @@ export default function FishingLog() {
               </> : <div className="rounded-2xl bg-[#eaf4ff] px-4 py-3 text-center text-sm text-[#6e8caf]">캐릭터가 있는 날짜를 누르면 출조 기록을 볼 수 있어요.</div>}
             </div>
             <div className="mt-4 flex flex-wrap justify-center gap-2">{speciesNames.map((name) => <SpeciesBadge key={name} species={name} showName />)}</div>
+            <p className="mt-3 text-center text-xs text-[#8aa0be]">★ 선호 물때 · {settings.region} 기준</p>
           </TabsContent>
 
           <TabsContent value="list">
@@ -147,6 +193,17 @@ export default function FishingLog() {
               <div className="grid grid-cols-2 gap-3"><Field label="조과(마릿수)"><Input type="number" min="0" required inputMode="numeric" placeholder="0" value={form.catchCount} onChange={set("catchCount")} /></Field><Field label="최대 크기(cm)"><Input type="number" min="0" step="0.1" inputMode="decimal" placeholder="선택" value={form.maxSize} onChange={set("maxSize")} /></Field></div>
               <Field label="메모 (선택)"><Textarea placeholder="잘 잡힌 시간, 수심, 특이사항 등" value={form.memo} onChange={set("memo")} className="min-h-20" /></Field>
               <Button disabled={saving} type="submit" className="h-12 w-full rounded-xl bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] font-extrabold text-white hover:from-[#4f8ee8] hover:to-[#4db7ea]">{saving ? "저장 중..." : "기록 저장"}</Button>
+            </form>
+          </DialogContent>
+        </Dialog>
+
+        <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
+          <DialogContent className="rounded-[1.5rem] border-[#dbe9fa] bg-[#f7fbff] text-[#29456f]">
+            <DialogHeader className="text-left"><DialogTitle>캘린더 설정</DialogTitle><DialogDescription className="text-[#8298b8]">지역과 선호 물때를 설정하면 추천일을 표시해요.</DialogDescription></DialogHeader>
+            <form onSubmit={saveSettings} className="mt-2 space-y-5">
+              <Field label="지역"><NativeSelect value={settings.region} onChange={(e) => setSettings({ ...settings, region: e.target.value as Region })} className="w-full">{regions.map((region) => <NativeSelectOption key={region} value={region}>{region}</NativeSelectOption>)}</NativeSelect></Field>
+              <Field label="선호 물때 (1~15)"><Input required inputMode="numeric" placeholder="예: 3, 4, 5, 10" value={settings.preferredTides} onChange={(e) => setSettings({ ...settings, preferredTides: e.target.value })} /><p className="text-xs leading-5 text-[#8aa0be]">여러 개는 쉼표로 구분해주세요. 해당 날짜에 ★가 표시됩니다.</p></Field>
+              <Button disabled={settingsSaving} type="submit" className="h-12 w-full rounded-xl bg-[#5e9bf2] font-extrabold text-white hover:bg-[#4f8ee8]">{settingsSaving ? "저장 중..." : "설정 저장"}</Button>
             </form>
           </DialogContent>
         </Dialog>

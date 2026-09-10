@@ -18,3 +18,10 @@ export const fishingLogs = sqliteTable("fishing_logs", {
 }, (table) => [
   index("idx_fishing_logs_owner_email").on(table.ownerEmail),
 ]);
+
+export const fishingSettings = sqliteTable("fishing_settings", {
+  ownerEmail: text("owner_email").primaryKey(),
+  region: text("region").notNull().default("서해"),
+  preferredTides: text("preferred_tides").notNull().default("3,4,5,10,11"),
+  updatedAt: text("updated_at").notNull().default(sql`CURRENT_TIMESTAMP`),
+});
