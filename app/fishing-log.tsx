@@ -240,7 +240,9 @@ export default function FishingLog() {
               <button type="button" onClick={() => setSettingsOpen(true)} className="flex size-10 items-center justify-center rounded-xl bg-white/25 text-white transition hover:bg-white/35" aria-label="설정">
                 <Settings className="size-5" />
               </button>
-              <div className="flex size-12 items-center justify-center rounded-2xl bg-white/90 text-3xl shadow-lg shadow-[#4387df]/20" aria-label="쭈꾸미 캐릭터">🐙</div>
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-white/90 shadow-lg shadow-[#4387df]/20" aria-label={bestSpecies === "–" ? "주력 어종 없음" : `주력 어종 ${bestSpecies}`} title={bestSpecies === "–" ? "주력 어종 없음" : `주력 어종: ${bestSpecies}`}>
+                {bestSpecies === "–" ? <Waves className="size-6 text-[#74a9e8]" /> : <SpeciesBadge species={bestSpecies} compact />}
+              </div>
             </div>
           </div>
 
@@ -344,7 +346,7 @@ export default function FishingLog() {
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild>
-            <Button aria-label="출조 기록하기" className="fixed bottom-4 right-4 z-20 size-[4.5rem] rounded-full bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] p-0 text-white shadow-xl shadow-[#4d94e8]/30 hover:from-[#4f8ee8] hover:to-[#4db7ea]">
+            <Button aria-label="출조 기록하기" className="fixed bottom-8 right-8 z-20 size-[4.5rem] rounded-full bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] p-0 text-white shadow-xl shadow-[#4d94e8]/30 hover:from-[#4f8ee8] hover:to-[#4db7ea]">
               <Plus className="size-8" />
             </Button>
           </DialogTrigger>
