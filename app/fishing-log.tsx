@@ -202,7 +202,7 @@ export default function FishingLog() {
             <DialogHeader className="text-left"><DialogTitle>캘린더 설정</DialogTitle><DialogDescription className="text-[#8298b8]">지역과 선호 물때를 설정하면 추천일을 표시해요.</DialogDescription></DialogHeader>
             <form onSubmit={saveSettings} className="mt-2 space-y-5">
               <Field label="지역"><NativeSelect value={settings.region} onChange={(e) => setSettings({ ...settings, region: e.target.value as Region })} className="w-full">{regions.map((region) => <NativeSelectOption key={region} value={region}>{region}</NativeSelectOption>)}</NativeSelect></Field>
-              <Field label="선호 물때 (1~15)"><Input required inputMode="numeric" placeholder="예: 3, 4, 5, 10" value={settings.preferredTides} onChange={(e) => setSettings({ ...settings, preferredTides: e.target.value })} /><p className="text-xs leading-5 text-[#8aa0be]">여러 개는 쉼표로 구분해주세요. 해당 날짜에 ★가 표시됩니다.</p></Field>
+              <Field label="선호 물때 (1~15)"><Input required inputMode="text" placeholder="예: 1~5 또는 3, 4, 5, 10" value={settings.preferredTides} onChange={(e) => setSettings({ ...settings, preferredTides: e.target.value })} /><p className="text-xs leading-5 text-[#8aa0be]">범위는 1~5, 개별 숫자는 쉼표로 구분해주세요. 해당 날짜에 ★가 표시됩니다.</p></Field>
               <Button disabled={settingsSaving} type="submit" className="h-12 w-full rounded-xl bg-[#5e9bf2] font-extrabold text-white hover:bg-[#4f8ee8]">{settingsSaving ? "저장 중..." : "설정 저장"}</Button>
             </form>
           </DialogContent>
