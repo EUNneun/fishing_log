@@ -1,16 +1,30 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Anchor, CalendarDays, MapPin, Plus, ShipWheel, WalletCards, Waves } from "lucide-react";
+import { Anchor, CalendarDays, List, MapPin, Plus, ShipWheel, WalletCards, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
+import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
 import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
+import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 
 type Log = { id: number; tripDate: string; location: string; boatName: string; fee: number; species: string; rig: string; weather: string; catchCount: number; maxSize: number | null; memo: string };
 const freshForm = () => ({ tripDate: new Date().toISOString().slice(0, 10), location: "", boatName: "", fee: "", species: "", rig: "", weather: "맑음", catchCount: "", maxSize: "", memo: "" });
+
+const speciesCharacters = {
+  "꽃게": { position: "0% 0%", color: "#368bd0", bg: "#edf7ff" },
+  "참돔": { position: "50% 0%", color: "#dd6680", bg: "#fff0f3" },
+  "쭈꾸미": { position: "100% 0%", color: "#e3675f", bg: "#fff1ed" },
+  "갑오징어": { position: "0% 100%", color: "#8865c9", bg: "#f4efff" },
+  "한치": { position: "50% 100%", color: "#438dc5", bg: "#edf8ff" },
+  "우럭": { position: "100% 100%", color: "#60789f", bg: "#eef3fa" },
+} as const;
+type SpeciesName = keyof typeof speciesCharacters;
+const speciesNames = Object.keys(speciesCharacters) as SpeciesName[];
+const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 export default function FishingLog() {
   const [logs, setLogs] = useState<Log[]>([]);
@@ -19,6 +33,8 @@ export default function FishingLog() {
   const [loading, setLoading] = useState(true);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState("");
+  const [selectedDate, setSelectedDate] = useState<Date | undefined>();
+  const [calendarMonth, setCalendarMonth] = useState(new Date());
 
   useEffect(() => {
     fetch("/api/logs").then(async (res) => {
@@ -34,6 +50,11 @@ export default function FishingLog() {
     const counts = logs.reduce<Record<string, number>>((acc, log) => ({ ...acc, [log.species]: (acc[log.species] || 0) + log.catchCount }), {});
     return Object.entries(counts).sort((a, b) => b[1] - a[1])[0]?.[0] || "–";
   }, [logs]);
+  const logsByDate = useMemo(() => logs.reduce<Record<string, Log[]>>((acc, log) => {
+    (acc[log.tripDate] ||= []).push(log);
+    return acc;
+  }, {}), [logs]);
+  const selectedLogs = selectedDate ? logsByDate[dateKey(selectedDate)] || [] : [];
 
   async function submit(e: React.FormEvent) {
     e.preventDefault(); setSaving(true); setError("");
@@ -66,19 +87,53 @@ export default function FishingLog() {
           </section>
         </header>
 
-        <section className="px-5">
-          <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-[#29456f]">최근 출조</h2><span className="text-sm text-[#8298b8]">총 {logs.length}건</span></div>
+        <Tabs defaultValue="calendar" className="px-5 pt-5">
+          <TabsList className="mb-5 h-11 w-full rounded-2xl bg-[#e4effc] p-1">
+            <TabsTrigger value="calendar" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#3988f2]"><CalendarDays />캘린더</TabsTrigger>
+            <TabsTrigger value="list" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#3988f2]"><List />기록 목록</TabsTrigger>
+          </TabsList>
           {error && <div className="mb-3 rounded-xl bg-red-400/15 px-4 py-3 text-sm text-red-200">{error}</div>}
+
+          <TabsContent value="calendar">
+            <div className="overflow-hidden rounded-[1.5rem] border border-[#dfebfa] bg-white p-2 shadow-sm">
+              <Calendar
+                mode="single"
+                selected={selectedDate}
+                onSelect={setSelectedDate}
+                month={calendarMonth}
+                onMonthChange={setCalendarMonth}
+                showOutsideDays={false}
+                className="w-full bg-white p-2 [--cell-size:3.15rem]"
+                classNames={{ month: "w-full", month_grid: "w-full", caption_label: "text-base font-extrabold text-[#29456f]", weekday: "flex-1 text-xs font-semibold text-[#8aa0be]", day: "group/day relative h-[3.6rem] w-full p-0 text-center" }}
+                formatters={{ formatCaption: (date) => `${date.getFullYear()}년 ${date.getMonth() + 1}월`, formatWeekdayName: (date) => ["일", "월", "화", "수", "목", "금", "토"][date.getDay()] }}
+                components={{ DayButton: (props) => {
+                  const dayLogs = logsByDate[dateKey(props.day.date)] || [];
+                  const species = [...new Set(dayLogs.map((log) => log.species))].slice(0, 3);
+                  return <CalendarDayButton {...props} className="min-w-0 rounded-xl py-1 hover:bg-[#eef6ff] data-[selected-single=true]:bg-[#dceeff] data-[selected-single=true]:text-[#29456f]">
+                    <span className="text-xs font-semibold">{props.day.date.getDate()}</span>
+                    <span className="flex min-h-5 items-center justify-center -space-x-1">
+                      {species.map((name) => <SpeciesBadge key={name} species={name} compact />)}
+                    </span>
+                  </CalendarDayButton>;
+                } }}
+              />
+            </div>
+            <div className="mt-4">
+              {selectedDate ? <>
+                <div className="mb-3 flex items-center justify-between"><h2 className="font-bold text-[#29456f]">{selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 기록</h2><span className="text-sm text-[#8298b8]">{selectedLogs.length}건</span></div>
+                {selectedLogs.length ? <LogCards logs={selectedLogs} money={money} /> : <div className="rounded-2xl border border-dashed border-[#bdd6f4] bg-white p-6 text-center text-sm text-[#8298b8]">이날은 아직 출조 기록이 없어요.</div>}
+              </> : <div className="rounded-2xl bg-[#eaf4ff] px-4 py-3 text-center text-sm text-[#6e8caf]">캐릭터가 있는 날짜를 누르면 출조 기록을 볼 수 있어요.</div>}
+            </div>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">{speciesNames.map((name) => <SpeciesBadge key={name} species={name} showName />)}</div>
+          </TabsContent>
+
+          <TabsContent value="list">
+            <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-[#29456f]">최근 출조</h2><span className="text-sm text-[#8298b8]">총 {logs.length}건</span></div>
           {loading ? <div className="rounded-2xl bg-white p-6 text-center text-[#8298b8] shadow-sm">기록을 불러오는 중...</div> : logs.length === 0 ? (
             <div className="rounded-[1.5rem] border border-dashed border-[#a7c9f5] bg-white px-6 py-10 text-center shadow-sm"><Anchor className="mx-auto size-9 text-[#4c98ef]" /><p className="mt-4 font-bold text-[#29456f]">첫 출조를 기록해보세요</p><p className="mt-1 text-sm text-[#8298b8]">기억보다 기록이 오래갑니다.</p></div>
-          ) : <div className="space-y-3">{logs.map((log) => (
-            <article key={log.id} className="rounded-[1.35rem] border border-[#e2edfb] bg-white p-4 shadow-sm shadow-[#5594df]/5">
-              <div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2 text-xs text-[#8298b8]"><CalendarDays className="size-3.5" />{log.tripDate}</div><h3 className="mt-2 text-lg font-bold text-[#29456f]">{log.species} <span className="text-[#3988f2]">{log.catchCount}마리</span></h3></div>{log.maxSize && <span className="rounded-full bg-[#e8f3ff] px-3 py-1 text-sm font-bold text-[#3988f2]">최대 {log.maxSize}cm</span>}</div>
-              <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-[#607a9e]"><span className="flex items-center gap-2"><MapPin className="size-4 text-[#74a9e8]" />{log.location}</span><span className="flex items-center gap-2"><ShipWheel className="size-4 text-[#74a9e8]" />{log.boatName}</span><span className="flex items-center gap-2"><WalletCards className="size-4 text-[#74a9e8]" />{money.format(log.fee)}원</span><span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]" />{log.weather} · {log.rig}</span></div>
-              {log.memo && <p className="mt-3 border-t border-[#e6effb] pt-3 text-sm leading-6 text-[#7c91ad]">{log.memo}</p>}
-            </article>
-          ))}</div>}
-        </section>
+          ) : <LogCards logs={logs} money={money} />}
+          </TabsContent>
+        </Tabs>
 
         <Dialog open={open} onOpenChange={setOpen}>
           <DialogTrigger asChild><Button className="fixed bottom-5 left-1/2 z-20 h-14 w-[calc(100%-2.5rem)] max-w-[25rem] -translate-x-1/2 rounded-2xl bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] text-base font-extrabold text-white shadow-xl shadow-[#4d94e8]/30 hover:from-[#4f8ee8] hover:to-[#4db7ea]"><Plus className="size-5" />출조 기록하기</Button></DialogTrigger>
@@ -88,7 +143,7 @@ export default function FishingLog() {
               <div className="grid grid-cols-2 gap-3"><Field label="출조일"><Input type="date" required value={form.tripDate} onChange={set("tripDate")} /></Field><Field label="날씨"><NativeSelect required value={form.weather} onChange={set("weather")} className="w-full"><NativeSelectOption>맑음</NativeSelectOption><NativeSelectOption>흐림</NativeSelectOption><NativeSelectOption>비</NativeSelectOption><NativeSelectOption>바람</NativeSelectOption><NativeSelectOption>눈</NativeSelectOption></NativeSelect></Field></div>
               <div className="grid grid-cols-2 gap-3"><Field label="장소"><Input required placeholder="예: 오천항" value={form.location} onChange={set("location")} /></Field><Field label="배 이름(선사)"><Input required placeholder="예: 뉴○○호" value={form.boatName} onChange={set("boatName")} /></Field></div>
               <Field label="선비"><Input type="number" min="0" required inputMode="numeric" placeholder="원 단위" value={form.fee} onChange={set("fee")} /></Field>
-              <div className="grid grid-cols-2 gap-3"><Field label="어종"><Input required placeholder="예: 갑오징어" value={form.species} onChange={set("species")} /></Field><Field label="채비"><Input required placeholder="예: 가지채비" value={form.rig} onChange={set("rig")} /></Field></div>
+              <div className="grid grid-cols-2 gap-3"><Field label="어종"><NativeSelect required value={form.species} onChange={set("species")} className="w-full"><NativeSelectOption value="">선택</NativeSelectOption>{speciesNames.map((name) => <NativeSelectOption key={name} value={name}>{name}</NativeSelectOption>)}</NativeSelect></Field><Field label="채비"><Input required placeholder="예: 가지채비" value={form.rig} onChange={set("rig")} /></Field></div>
               <div className="grid grid-cols-2 gap-3"><Field label="조과(마릿수)"><Input type="number" min="0" required inputMode="numeric" placeholder="0" value={form.catchCount} onChange={set("catchCount")} /></Field><Field label="최대 크기(cm)"><Input type="number" min="0" step="0.1" inputMode="decimal" placeholder="선택" value={form.maxSize} onChange={set("maxSize")} /></Field></div>
               <Field label="메모 (선택)"><Textarea placeholder="잘 잡힌 시간, 수심, 특이사항 등" value={form.memo} onChange={set("memo")} className="min-h-20" /></Field>
               <Button disabled={saving} type="submit" className="h-12 w-full rounded-xl bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] font-extrabold text-white hover:from-[#4f8ee8] hover:to-[#4db7ea]">{saving ? "저장 중..." : "기록 저장"}</Button>
@@ -102,3 +157,20 @@ export default function FishingLog() {
 
 function Stat({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-[#8aa0be]">{label}</p><p className="mt-1 truncate font-bold text-[#29456f]">{value}</p></div>; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label className="text-sm text-[#496789]">{label}</Label>{children}</div>; }
+
+function SpeciesBadge({ species, compact = false, showName = false }: { species: string; compact?: boolean; showName?: boolean }) {
+  const character = speciesCharacters[species as SpeciesName] || speciesCharacters["우럭"];
+  return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? "size-6 rounded-full ring-2 ring-white" : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}>
+    <span aria-hidden className={compact ? "size-6 shrink-0 rounded-full" : "size-7 shrink-0 rounded-full"} style={{ backgroundImage: "url('/species-characters.png')", backgroundSize: "300% 200%", backgroundPosition: character.position, backgroundRepeat: "no-repeat" }} />{showName && <span>{species}</span>}
+  </span>;
+}
+
+function LogCards({ logs, money }: { logs: Log[]; money: Intl.NumberFormat }) {
+  return <div className="space-y-3">{logs.map((log) => (
+    <article key={log.id} className="rounded-[1.35rem] border border-[#e2edfb] bg-white p-4 shadow-sm shadow-[#5594df]/5">
+      <div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2 text-xs text-[#8298b8]"><CalendarDays className="size-3.5" />{log.tripDate}</div><h3 className="mt-2 flex items-center gap-2 text-lg font-bold text-[#29456f]"><SpeciesBadge species={log.species} />{log.species} <span className="text-[#3988f2]">{log.catchCount}마리</span></h3></div>{log.maxSize && <span className="rounded-full bg-[#e8f3ff] px-3 py-1 text-sm font-bold text-[#3988f2]">최대 {log.maxSize}cm</span>}</div>
+      <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-[#607a9e]"><span className="flex items-center gap-2"><MapPin className="size-4 text-[#74a9e8]" />{log.location}</span><span className="flex items-center gap-2"><ShipWheel className="size-4 text-[#74a9e8]" />{log.boatName}</span><span className="flex items-center gap-2"><WalletCards className="size-4 text-[#74a9e8]" />{money.format(log.fee)}원</span><span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]" />{log.weather} · {log.rig}</span></div>
+      {log.memo && <p className="mt-3 border-t border-[#e6effb] pt-3 text-sm leading-6 text-[#7c91ad]">{log.memo}</p>}
+    </article>
+  ))}</div>;
+}
