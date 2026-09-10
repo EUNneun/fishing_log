@@ -14,9 +14,18 @@ interface Env {
   };
 }
 
+interface AccessIdentity {
+  email?: string;
+  name?: string;
+}
+
 interface ExecutionContext {
   waitUntil(promise: Promise<unknown>): void;
   passThroughOnException(): void;
+  access?: {
+    aud: string;
+    getIdentity(): Promise<AccessIdentity | null>;
+  };
 }
 
 // Image security config. SVG sources with .svg extension auto-skip the
@@ -40,7 +49,20 @@ const worker = {
       }, allowedWidths);
     }
 
-    return handler.fetch(request, env, ctx);
+    // Worker-level Cloudflare Access exposes the authenticated identity on
+    // ctx.access. Mirror the email into a request header so the existing app
+    // authentication layer can use the same per-user data separation logic.
+    let appRequest = request;
+    if (ctx.access) {
+      const identity = await ctx.access.getIdentity();
+      if (identity?.email) {
+        const requestHeaders = new Headers(request.headers);
+        requestHeaders.set("cf-access-authenticated-user-email", identity.email);
+        appRequest = new Request(request, { headers: requestHeaders });
+      }
+    }
+
+    return handler.fetch(appRequest, env, ctx);
   },
 };
 
