@@ -1,7 +1,10 @@
 "use client";
 
 import { useEffect, useMemo, useState } from "react";
-import { Anchor, CalendarDays, List, MapPin, Plus, Settings2, ShipWheel, WalletCards, Waves } from "lucide-react";
+import { getHolidayPreset } from "@hyunbinseo/holidays-kr";
+import { onAuthStateChanged, signInWithPopup, signOut, type User } from "firebase/auth";
+import { addDoc, collection, doc, getDoc, getDocs, serverTimestamp, setDoc } from "firebase/firestore";
+import { Anchor, CalendarDays, List, LogOut, MapPin, Plus, Settings2, ShipWheel, WalletCards, Waves } from "lucide-react";
 import { Button } from "@/components/ui/button";
 import { Calendar, CalendarDayButton } from "@/components/ui/calendar";
 import { Input } from "@/components/ui/input";
@@ -10,8 +13,9 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle, DialogTrigger } from "@/components/ui/dialog";
 import { Textarea } from "@/components/ui/textarea";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
+import { auth, db, googleProvider } from "@/lib/firebase";
 
-type Log = { id: number; tripDate: string; location: string; boatName: string; fee: number; species: string; rig: string; weather: string; catchCount: number; maxSize: number | null; memo: string };
+type Log = { id: string; tripDate: string; location: string; boatName: string; fee: number; species: string; rig: string; weather: string; catchCount: number; maxSize: number | null; memo: string };
 const freshForm = () => ({ tripDate: new Date().toISOString().slice(0, 10), location: "", boatName: "", fee: "", species: "", rig: "", weather: "맑음", catchCount: "", maxSize: "", memo: "" });
 
 const speciesCharacters = {
@@ -22,12 +26,14 @@ const speciesCharacters = {
   "한치": { position: "50% 100%", color: "#438dc5", bg: "#edf8ff" },
   "우럭": { position: "100% 100%", color: "#60789f", bg: "#eef3fa" },
 } as const;
+
 type SpeciesName = keyof typeof speciesCharacters;
 const speciesNames = Object.keys(speciesCharacters) as SpeciesName[];
-const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 const regions = ["서해", "남해", "동해", "제주"] as const;
 type Region = typeof regions[number];
 type UserSettings = { region: Region; preferredTides: string };
+const defaultSettings: UserSettings = { region: "서해", preferredTides: "3,4,5,10,11" };
+const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
 
 function tideNumber(date: Date, region: Region) {
   const anchor = new Date(2026, 8, 10);
@@ -42,7 +48,25 @@ function tideLabel(tide: number) {
   return `${tide}물`;
 }
 
+function parsePreferredTides(value: string) {
+  const result = new Set<number>();
+  for (const part of value.split(",").map((v) => v.trim()).filter(Boolean)) {
+    const range = part.match(/^(\d{1,2})\s*[~-]\s*(\d{1,2})$/);
+    if (range) {
+      const start = Number(range[1]);
+      const end = Number(range[2]);
+      for (let n = Math.min(start, end); n <= Math.max(start, end); n += 1) if (n >= 1 && n <= 15) result.add(n);
+    } else {
+      const n = Number(part);
+      if (Number.isInteger(n) && n >= 1 && n <= 15) result.add(n);
+    }
+  }
+  return result;
+}
+
 export default function FishingLog() {
+  const [user, setUser] = useState<User | null>(null);
+  const [authReady, setAuthReady] = useState(false);
   const [logs, setLogs] = useState<Log[]>([]);
   const [form, setForm] = useState(freshForm);
   const [open, setOpen] = useState(false);
@@ -53,30 +77,43 @@ export default function FishingLog() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
-  const [settings, setSettings] = useState<UserSettings>({ region: "서해", preferredTides: "3,4,5,10,11" });
+  const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [holidays, setHolidays] = useState<Record<string, string>>({});
 
-  useEffect(() => {
-    fetch("/api/logs").then(async (res) => {
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "기록을 불러오지 못했습니다.");
-      setLogs(data.logs);
-    }).catch((e) => setError(e.message)).finally(() => setLoading(false));
-  }, []);
+  useEffect(() => onAuthStateChanged(auth, (nextUser) => {
+    setUser(nextUser);
+    setAuthReady(true);
+  }), []);
 
   useEffect(() => {
-    fetch(`/api/holidays?year=${calendarMonth.getFullYear()}`).then(async (res) => {
-      const data = await res.json();
-      if (res.ok) setHolidays((current) => ({ ...current, ...data.holidays }));
+    if (!user) {
+      setLogs([]);
+      setSettings(defaultSettings);
+      setLoading(false);
+      return;
+    }
+    setLoading(true);
+    Promise.all([
+      getDocs(collection(db, "users", user.uid, "logs")),
+      getDoc(doc(db, "users", user.uid, "settings", "main")),
+    ]).then(([logSnapshot, settingsSnapshot]) => {
+      const nextLogs = logSnapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Log))
+        .sort((a, b) => b.tripDate.localeCompare(a.tripDate));
+      setLogs(nextLogs);
+      if (settingsSnapshot.exists()) setSettings(settingsSnapshot.data() as UserSettings);
+    }).catch((e) => setError(e instanceof Error ? e.message : "데이터를 불러오지 못했습니다."))
+      .finally(() => setLoading(false));
+  }, [user]);
+
+  useEffect(() => {
+    const year = String(calendarMonth.getFullYear());
+    getHolidayPreset(year).then((preset) => {
+      setHolidays((current) => ({
+        ...current,
+        ...Object.fromEntries(Object.entries(preset).map(([date, names]) => [date, names.join(", ")])),
+      }));
     }).catch(() => undefined);
   }, [calendarMonth]);
-
-  useEffect(() => {
-    fetch("/api/settings").then(async (res) => {
-      const data = await res.json();
-      if (res.ok && data.settings) setSettings(data.settings);
-    }).catch(() => undefined);
-  }, []);
 
   const totalCatch = useMemo(() => logs.reduce((sum, log) => sum + log.catchCount, 0), [logs]);
   const totalFee = useMemo(() => logs.reduce((sum, log) => sum + log.fee, 0), [logs]);
@@ -89,31 +126,55 @@ export default function FishingLog() {
     return acc;
   }, {}), [logs]);
   const selectedLogs = selectedDate ? logsByDate[dateKey(selectedDate)] || [] : [];
+  const preferredTides = useMemo(() => parsePreferredTides(settings.preferredTides), [settings.preferredTides]);
+
+  async function login() {
+    setError("");
+    try { await signInWithPopup(auth, googleProvider); }
+    catch (e) { setError(e instanceof Error ? e.message : "Google 로그인에 실패했습니다."); }
+  }
 
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); setSaving(true); setError("");
+    e.preventDefault();
+    if (!user) return;
+    setSaving(true); setError("");
     try {
-      const res = await fetch("/api/logs", { method: "POST", headers: { "Content-Type": "application/json" }, body: JSON.stringify(form) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "저장하지 못했습니다.");
-      setLogs((current) => [data.log, ...current]); setOpen(false); setForm(freshForm());
+      const payload = {
+        tripDate: form.tripDate,
+        location: form.location.trim(),
+        boatName: form.boatName.trim(),
+        fee: Number(form.fee),
+        species: form.species,
+        rig: form.rig.trim(),
+        weather: form.weather,
+        catchCount: Number(form.catchCount),
+        maxSize: form.maxSize ? Number(form.maxSize) : null,
+        memo: form.memo.trim(),
+        createdAt: serverTimestamp(),
+      };
+      const ref = await addDoc(collection(db, "users", user.uid, "logs"), payload);
+      setLogs((current) => [{ id: ref.id, ...payload, createdAt: undefined } as unknown as Log, ...current].sort((a, b) => b.tripDate.localeCompare(a.tripDate)));
+      setOpen(false); setForm(freshForm());
     } catch (e) { setError(e instanceof Error ? e.message : "저장하지 못했습니다."); }
     finally { setSaving(false); }
   }
 
   async function saveSettings(e: React.FormEvent) {
-    e.preventDefault(); setSettingsSaving(true); setError("");
+    e.preventDefault();
+    if (!user) return;
+    setSettingsSaving(true); setError("");
     try {
-      const res = await fetch("/api/settings", { method: "PUT", headers: { "Content-Type": "application/json" }, body: JSON.stringify(settings) });
-      const data = await res.json();
-      if (!res.ok) throw new Error(data.error || "설정을 저장하지 못했습니다.");
-      setSettings(data.settings); setSettingsOpen(false);
+      await setDoc(doc(db, "users", user.uid, "settings", "main"), settings);
+      setSettingsOpen(false);
     } catch (e) { setError(e instanceof Error ? e.message : "설정을 저장하지 못했습니다."); }
     finally { setSettingsSaving(false); }
   }
 
   const set = (key: keyof ReturnType<typeof freshForm>) => (e: React.ChangeEvent<HTMLInputElement | HTMLTextAreaElement | HTMLSelectElement>) => setForm({ ...form, [key]: e.target.value });
   const money = new Intl.NumberFormat("ko-KR");
+
+  if (!authReady) return <CenteredMessage title="FISH LOG" description="로그인 정보를 확인하는 중입니다." />;
+  if (!user) return <LoginScreen error={error} onLogin={login} />;
 
   return (
     <main className="min-h-dvh bg-[#eaf3ff] text-[#29456f]">
@@ -122,7 +183,11 @@ export default function FishingLog() {
           <div className="absolute -right-12 -top-16 h-52 w-52 rounded-full border-[34px] border-white/20" />
           <div className="relative flex items-center justify-between">
             <div><p className="text-sm font-medium text-white/80">나의 출조 기록</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-white">FISH LOG</h1></div>
-            <div className="flex items-center gap-2"><button type="button" onClick={() => setSettingsOpen(true)} className="flex size-10 items-center justify-center rounded-xl bg-white/25 text-white transition hover:bg-white/35" aria-label="물때 설정"><Settings2 className="size-5" /></button><div className="flex size-12 items-center justify-center rounded-2xl bg-white/90 text-3xl shadow-lg shadow-[#4387df]/20" aria-label="문어">🐙</div></div>
+            <div className="flex items-center gap-2">
+              <button type="button" onClick={() => setSettingsOpen(true)} className="flex size-10 items-center justify-center rounded-xl bg-white/25 text-white transition hover:bg-white/35" aria-label="물때 설정"><Settings2 className="size-5" /></button>
+              <button type="button" onClick={() => signOut(auth)} className="flex size-10 items-center justify-center rounded-xl bg-white/25 text-white transition hover:bg-white/35" aria-label="로그아웃"><LogOut className="size-5" /></button>
+              <div className="flex size-12 items-center justify-center rounded-2xl bg-white/90 text-3xl shadow-lg shadow-[#4387df]/20" aria-label="문어">🐙</div>
+            </div>
           </div>
           <section className="relative mt-6 rounded-[1.5rem] bg-white/92 p-5 shadow-xl shadow-[#4387df]/15 backdrop-blur">
             <div className="flex items-end justify-between"><div><p className="text-sm text-[#7b94ba]">지금까지 잡은 물고기</p><p className="mt-1 text-4xl font-black text-[#3988f2]">{totalCatch}<span className="ml-1 text-lg font-bold">마리</span></p></div><Waves className="size-10 text-[#5abef5]/40" /></div>
@@ -137,7 +202,7 @@ export default function FishingLog() {
             <TabsTrigger value="calendar" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#3988f2]"><CalendarDays />캘린더</TabsTrigger>
             <TabsTrigger value="list" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#3988f2]"><List />기록 목록</TabsTrigger>
           </TabsList>
-          {error && <div className="mb-3 rounded-xl bg-red-400/15 px-4 py-3 text-sm text-red-200">{error}</div>}
+          {error && <div className="mb-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>}
 
           <TabsContent value="calendar">
             <div className="overflow-hidden rounded-[1.5rem] border border-[#dfebfa] bg-white p-2 shadow-sm">
@@ -157,14 +222,12 @@ export default function FishingLog() {
                   const day = props.day.date.getDay();
                   const holiday = holidays[dateKey(props.day.date)];
                   const tide = tideNumber(props.day.date, settings.region);
-                  const preferred = settings.preferredTides.split(/[^0-9]+/).map(Number).includes(tide);
+                  const preferred = preferredTides.has(tide);
                   const dateColor = holiday || day === 0 ? "text-[#e45f72]" : day === 6 ? "text-[#438fd7]" : "text-[#536f93]";
                   return <CalendarDayButton {...props} className="min-w-0 rounded-xl py-1 hover:bg-[#eef6ff] data-[selected-single=true]:bg-[#dceeff] data-[selected-single=true]:text-[#29456f]" title={holiday || undefined}>
                     <span className={`text-xs font-semibold ${dateColor}`}>{props.day.date.getDate()}</span>
                     <span className={preferred ? "rounded-full bg-[#fff1b8] px-1 text-[9px] font-extrabold text-[#b17800]" : "text-[9px] text-[#9aacc3]"}>{preferred ? "★ " : ""}{tideLabel(tide)}</span>
-                    <span className="flex min-h-5 items-center justify-center -space-x-1">
-                      {species.map((name) => <SpeciesBadge key={name} species={name} compact />)}
-                    </span>
+                    <span className="flex min-h-5 items-center justify-center -space-x-1">{species.map((name) => <SpeciesBadge key={name} species={name} compact />)}</span>
                   </CalendarDayButton>;
                 } }}
               />
@@ -181,9 +244,9 @@ export default function FishingLog() {
 
           <TabsContent value="list">
             <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-[#29456f]">최근 출조</h2><span className="text-sm text-[#8298b8]">총 {logs.length}건</span></div>
-          {loading ? <div className="rounded-2xl bg-white p-6 text-center text-[#8298b8] shadow-sm">기록을 불러오는 중...</div> : logs.length === 0 ? (
-            <div className="rounded-[1.5rem] border border-dashed border-[#a7c9f5] bg-white px-6 py-10 text-center shadow-sm"><Anchor className="mx-auto size-9 text-[#4c98ef]" /><p className="mt-4 font-bold text-[#29456f]">첫 출조를 기록해보세요</p><p className="mt-1 text-sm text-[#8298b8]">기억보다 기록이 오래갑니다.</p></div>
-          ) : <LogCards logs={logs} money={money} />}
+            {loading ? <div className="rounded-2xl bg-white p-6 text-center text-[#8298b8] shadow-sm">기록을 불러오는 중...</div> : logs.length === 0 ? (
+              <div className="rounded-[1.5rem] border border-dashed border-[#a7c9f5] bg-white px-6 py-10 text-center shadow-sm"><Anchor className="mx-auto size-9 text-[#4c98ef]" /><p className="mt-4 font-bold text-[#29456f]">첫 출조를 기록해보세요</p><p className="mt-1 text-sm text-[#8298b8]">기억보다 기록이 오래갑니다.</p></div>
+            ) : <LogCards logs={logs} money={money} />}
           </TabsContent>
         </Tabs>
 
@@ -218,13 +281,30 @@ export default function FishingLog() {
   );
 }
 
+function LoginScreen({ error, onLogin }: { error: string; onLogin: () => void }) {
+  return <main className="flex min-h-dvh items-center justify-center bg-[#eaf3ff] p-6 text-[#29456f]">
+    <section className="w-full max-w-sm rounded-[2rem] bg-white p-8 text-center shadow-xl shadow-[#4a8ee8]/15">
+      <div className="mx-auto flex size-20 items-center justify-center rounded-3xl bg-[#edf7ff] text-5xl">🐙</div>
+      <p className="mt-6 text-sm font-semibold text-[#7b94ba]">나의 출조 기록</p>
+      <h1 className="mt-1 text-3xl font-black text-[#3988f2]">FISH LOG</h1>
+      <p className="mt-3 text-sm leading-6 text-[#8298b8]">Google 계정으로 로그인하면 나만의 출조 기록과 물때 설정을 안전하게 저장합니다.</p>
+      {error && <p className="mt-4 rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-600">{error}</p>}
+      <Button onClick={onLogin} className="mt-6 h-12 w-full rounded-xl bg-white font-bold text-[#3c5d86] ring-1 ring-[#cddff5] hover:bg-[#f5f9ff]">Google로 로그인</Button>
+    </section>
+  </main>;
+}
+
+function CenteredMessage({ title, description }: { title: string; description: string }) {
+  return <main className="flex min-h-dvh items-center justify-center bg-[#eaf3ff] p-6"><div className="text-center"><p className="text-2xl font-black text-[#3988f2]">{title}</p><p className="mt-2 text-sm text-[#8298b8]">{description}</p></div></main>;
+}
+
 function Stat({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-[#8aa0be]">{label}</p><p className="mt-1 truncate font-bold text-[#29456f]">{value}</p></div>; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label className="text-sm text-[#496789]">{label}</Label>{children}</div>; }
 
 function SpeciesBadge({ species, compact = false, showName = false }: { species: string; compact?: boolean; showName?: boolean }) {
   const character = speciesCharacters[species as SpeciesName] || speciesCharacters["우럭"];
   return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? "size-6 rounded-full ring-2 ring-white" : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}>
-    <span aria-hidden className={compact ? "size-6 shrink-0 rounded-full" : "size-7 shrink-0 rounded-full"} style={{ backgroundImage: "url('/species-characters.png')", backgroundSize: "300% 200%", backgroundPosition: character.position, backgroundRepeat: "no-repeat" }} />{showName && <span>{species}</span>}
+    <span aria-hidden className={compact ? "size-6 shrink-0 rounded-full" : "size-7 shrink-0 rounded-full"} style={{ backgroundImage: "url('/fishing_log/species-characters.png')", backgroundSize: "300% 200%", backgroundPosition: character.position, backgroundRepeat: "no-repeat" }} />{showName && <span>{species}</span>}
   </span>;
 }
 
