@@ -344,7 +344,15 @@ export default function FishingLog() {
           </TabsContent>
         </Tabs>
 
-        <Dialog open={open} onOpenChange={setOpen}>
+        <Dialog
+          open={open}
+          onOpenChange={(nextOpen) => {
+            if (nextOpen) {
+              setForm({ ...freshForm(), tripDate: selectedDate ? dateKey(selectedDate) : dateKey(new Date()) });
+            }
+            setOpen(nextOpen);
+          }}
+        >
           <DialogTrigger asChild>
             <Button aria-label="출조 기록하기" className="fixed bottom-8 right-8 z-20 size-[4.5rem] rounded-full bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] p-0 text-white shadow-xl shadow-[#4d94e8]/30 hover:from-[#4f8ee8] hover:to-[#4db7ea]">
               <Plus className="size-8" />
