@@ -126,7 +126,14 @@ export default function RecordPage() {
 
           <section className="space-y-4 rounded-[1.5rem] border border-[#dfeafa] bg-white p-4 shadow-sm">
             <Field label="출조일">
-              <Input type="date" required value={form.tripDate} onChange={set("tripDate")} className="w-full" />
+              <Input
+                type="date"
+                required
+                value={form.tripDate}
+                onChange={set("tripDate")}
+                className="block w-full max-w-full min-w-0 box-border"
+                style={{ inlineSize: "100%", maxInlineSize: "100%" }}
+              />
             </Field>
 
             <Field label="날씨">
@@ -199,7 +206,7 @@ export default function RecordPage() {
 }
 
 function Field({ label, children }: { label: string; children: React.ReactNode }) {
-  return <div className="min-w-0 space-y-2"><Label className="text-sm text-[#496789]">{label}</Label>{children}</div>;
+  return <div className="min-w-0 w-full max-w-full overflow-hidden space-y-2"><Label className="text-sm text-[#496789]">{label}</Label>{children}</div>;
 }
 
 function StarRating({ label, value, onChange }: { label: string; value: number; onChange: (value: number) => void }) {
