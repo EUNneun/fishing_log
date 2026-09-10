@@ -102,3 +102,13 @@ body {
 
 input, textarea, select { background-color: #ffffff !important; border-color: #c9def7 !important; color: #29456f !important; }
 input::placeholder, textarea::placeholder { color: #9aacc3 !important; }
+
+/* GitHub Pages: the original PNG sprite is corrupted, so force the valid SVG sprite. */
+span[title="꽃게"] > span[aria-hidden="true"],
+span[title="참돔"] > span[aria-hidden="true"],
+span[title="쭈꾸미"] > span[aria-hidden="true"],
+span[title="갑오징어"] > span[aria-hidden="true"],
+span[title="한치"] > span[aria-hidden="true"],
+span[title="우럭"] > span[aria-hidden="true"] {
+  background-image: url("/fishing_log/species-characters.svg") !important;
+}
