@@ -103,6 +103,31 @@ body {
 input, textarea, select { background-color: #ffffff !important; border-color: #c9def7 !important; color: #29456f !important; }
 input::placeholder, textarea::placeholder { color: #9aacc3 !important; }
 
+/* Keep all single-line form controls aligned on mobile. */
+input[data-slot="input"],
+select[data-slot="native-select"] {
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  height: 3rem !important;
+  min-height: 3rem !important;
+  box-sizing: border-box !important;
+}
+
+[data-slot="native-select-wrapper"] {
+  width: 100% !important;
+  max-width: 100% !important;
+}
+
+input[type="date"][data-slot="input"] {
+  display: block !important;
+  width: 100% !important;
+  max-width: 100% !important;
+  min-width: 0 !important;
+  -webkit-appearance: none;
+  appearance: none;
+}
+
 /* GitHub Pages: the original PNG sprite is corrupted, so force the valid SVG sprite. */
 span[title="꽃게"] > span[aria-hidden="true"],
 span[title="참돔"] > span[aria-hidden="true"],
