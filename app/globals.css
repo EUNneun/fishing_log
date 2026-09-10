@@ -112,3 +112,104 @@ span[title="한치"] > span[aria-hidden="true"],
 span[title="우럭"] > span[aria-hidden="true"] {
   background-image: url("/fishing_log/species-characters.svg") !important;
 }
+
+/* Compact the dashboard so the monthly calendar fits higher in the viewport. */
+main > div > header {
+  padding: 0.75rem 1rem 0.875rem !important;
+}
+
+main > div > header > div.relative > div:first-child > p {
+  display: none;
+}
+
+main > div > header > div.relative > div:first-child > h1 {
+  margin-top: 0 !important;
+  font-size: 1.25rem !important;
+  line-height: 1.5rem !important;
+}
+
+main > div > header > div.relative button {
+  width: 2.25rem !important;
+  height: 2.25rem !important;
+}
+
+main > div > header > div.relative button svg {
+  width: 1.125rem !important;
+  height: 1.125rem !important;
+}
+
+main > div > header > div.relative > div:last-child > div:last-child {
+  width: 2.5rem !important;
+  height: 2.5rem !important;
+  border-radius: 0.875rem !important;
+  font-size: 1.5rem !important;
+}
+
+main > div > header > section {
+  margin-top: 0.75rem !important;
+  padding: 0.875rem 1rem !important;
+  border-radius: 1.125rem !important;
+}
+
+main > div > header > section .text-4xl {
+  margin-top: 0 !important;
+  font-size: 2rem !important;
+  line-height: 2.25rem !important;
+}
+
+main > div > header > section .size-10 {
+  width: 2rem !important;
+  height: 2rem !important;
+}
+
+main > div > header > section > div.mt-5 {
+  margin-top: 0.75rem !important;
+  padding-top: 0.625rem !important;
+}
+
+main > div > header + div {
+  padding-top: 0.75rem !important;
+  padding-left: 1rem !important;
+  padding-right: 1rem !important;
+}
+
+main > div > header + div > div:first-child {
+  margin-bottom: 0.75rem !important;
+  height: 2.5rem !important;
+}
+
+/* Small circular add button aligned to the right edge of the app. */
+button.fixed.bottom-5 {
+  left: auto !important;
+  right: max(1rem, calc((100vw - 28rem) / 2 + 1rem)) !important;
+  width: 3.25rem !important;
+  max-width: none !important;
+  height: 3.25rem !important;
+  padding: 0 !important;
+  border-radius: 9999px !important;
+  transform: none !important;
+  gap: 0 !important;
+  font-size: 0 !important;
+}
+
+button.fixed.bottom-5 svg {
+  width: 1.4rem !important;
+  height: 1.4rem !important;
+}
+
+@media (max-height: 760px) {
+  main > div > header {
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+  }
+
+  main > div > header > section {
+    margin-top: 0.5rem !important;
+    padding-top: 0.625rem !important;
+    padding-bottom: 0.625rem !important;
+  }
+
+  main > div > header + div {
+    padding-top: 0.5rem !important;
+  }
+}
