@@ -1,0 +1,15 @@
+{
+  "$schema": "./node_modules/wrangler/config-schema.json",
+  "name": "fishing-log",
+  "main": "./worker/index.ts",
+  "compatibility_date": "2026-09-10",
+  "compatibility_flags": ["nodejs_compat"],
+  "d1_databases": [
+    {
+      "binding": "DB",
+      "database_name": "fishing-log-db",
+      "database_id": "8a29d60d-e7d4-46c8-b50d-475e6791a2d7",
+      "migrations_dir": "drizzle"
+    }
+  ]
+}
