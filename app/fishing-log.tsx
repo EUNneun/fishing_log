@@ -36,6 +36,12 @@ function tideNumber(date: Date, region: Region) {
   return ((base - 1 + diff) % 15 + 15) % 15 + 1;
 }
 
+function tideLabel(tide: number) {
+  if (tide === 14) return "조금";
+  if (tide === 15) return "무시";
+  return `${tide}물`;
+}
+
 export default function FishingLog() {
   const [logs, setLogs] = useState<Log[]>([]);
   const [form, setForm] = useState(freshForm);
@@ -155,7 +161,7 @@ export default function FishingLog() {
                   const dateColor = holiday || day === 0 ? "text-[#e45f72]" : day === 6 ? "text-[#438fd7]" : "text-[#536f93]";
                   return <CalendarDayButton {...props} className="min-w-0 rounded-xl py-1 hover:bg-[#eef6ff] data-[selected-single=true]:bg-[#dceeff] data-[selected-single=true]:text-[#29456f]" title={holiday || undefined}>
                     <span className={`text-xs font-semibold ${dateColor}`}>{props.day.date.getDate()}</span>
-                    <span className={preferred ? "rounded-full bg-[#fff1b8] px-1 text-[9px] font-extrabold text-[#b17800]" : "text-[9px] text-[#9aacc3]"}>{preferred ? "★ " : ""}{tide}물</span>
+                    <span className={preferred ? "rounded-full bg-[#fff1b8] px-1 text-[9px] font-extrabold text-[#b17800]" : "text-[9px] text-[#9aacc3]"}>{preferred ? "★ " : ""}{tideLabel(tide)}</span>
                     <span className="flex min-h-5 items-center justify-center -space-x-1">
                       {species.map((name) => <SpeciesBadge key={name} species={name} compact />)}
                     </span>
