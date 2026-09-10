@@ -3,6 +3,8 @@ import "./globals.css";
 import SettingsRouteBridge from "./settings-route-bridge";
 import AppNameBridge from "./app-name-bridge";
 import RecordEditBridge from "./record-edit-bridge";
+import BottomNav from "./bottom-nav";
+import HomeTabsBridge from "./home-tabs-bridge";
 
 export const metadata: Metadata = {
   title: "피싱로그 | 나의 낚시 기록",
@@ -14,5 +16,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body className="antialiased"><SettingsRouteBridge /><AppNameBridge /><RecordEditBridge />{children}</body></html>;
+  return <html lang="ko"><body className="antialiased"><SettingsRouteBridge /><AppNameBridge /><RecordEditBridge /><HomeTabsBridge />{children}<BottomNav /></body></html>;
 }
