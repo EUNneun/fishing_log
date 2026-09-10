@@ -178,10 +178,11 @@ main > div > header + div > div:first-child {
   height: 2.5rem !important;
 }
 
-/* Circular add button with equal right/bottom spacing. */
+/* Circular add button with exact viewport edge spacing. */
 button.fixed.bottom-5 {
+  position: fixed !important;
   left: auto !important;
-  right: max(1rem, calc((100vw - 28rem) / 2 + 1rem)) !important;
+  right: 1rem !important;
   bottom: 1rem !important;
   width: 4.5rem !important;
   max-width: none !important;
@@ -196,21 +197,19 @@ button.fixed.bottom-5 {
   gap: 0 !important;
   font-size: 0 !important;
   line-height: 0 !important;
-  display: flex !important;
-  align-items: center !important;
-  justify-content: center !important;
+  display: block !important;
   text-align: center !important;
 }
 
 button.fixed.bottom-5 svg {
-  display: block !important;
+  position: absolute !important;
+  left: 50% !important;
+  top: 50% !important;
   width: 1.95rem !important;
   height: 1.95rem !important;
   margin: 0 !important;
   padding: 0 !important;
-  position: static !important;
-  transform: none !important;
-  flex: 0 0 auto !important;
+  transform: translate(-50%, -50%) !important;
 }
 
 @media (max-height: 760px) {
