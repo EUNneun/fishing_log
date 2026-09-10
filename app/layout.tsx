@@ -1,9 +1,10 @@
 import type { Metadata } from "next";
 import "./globals.css";
 import SettingsRouteBridge from "./settings-route-bridge";
+import AppNameBridge from "./app-name-bridge";
 
 export const metadata: Metadata = {
-  title: "FISH LOG | 나의 낚시 기록",
+  title: "피싱로그 | 나의 낚시 기록",
   applicationName: "피싱로그",
   description: "장소, 선사, 선비, 어종, 채비, 날씨와 조과를 한곳에 기록합니다.",
   manifest: "/fishing_log/manifest.webmanifest",
@@ -19,15 +20,12 @@ export const metadata: Metadata = {
   },
 };
 
-export default function RootLayout({
-  children,
-}: Readonly<{
-  children: React.ReactNode;
-}>) {
+export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
   return (
     <html lang="ko">
       <body className="antialiased">
         <SettingsRouteBridge />
+        <AppNameBridge />
         {children}
       </body>
     </html>
