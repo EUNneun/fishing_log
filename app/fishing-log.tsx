@@ -32,7 +32,7 @@ type UserSettings = { region: Region; preferredTides: string };
 function tideNumber(date: Date, region: Region) {
   const anchor = new Date(2026, 8, 10);
   const diff = Math.round((Date.UTC(date.getFullYear(), date.getMonth(), date.getDate()) - Date.UTC(anchor.getFullYear(), anchor.getMonth(), anchor.getDate())) / 86400000);
-  const base = region === "서해" ? 6 : 7;
+  const base = region === "서해" ? 5 : 7;
   return ((base - 1 + diff) % 15 + 15) % 15 + 1;
 }
 
