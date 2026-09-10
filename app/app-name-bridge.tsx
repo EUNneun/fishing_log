@@ -11,6 +11,9 @@ export default function AppNameBridge() {
         if (node.nodeValue?.includes("피시로그")) {
           node.nodeValue = node.nodeValue.replace(/피시로그/g, "피싱로그");
         }
+        if (node.nodeValue?.trim() === "FISH LOG") {
+          node.nodeValue = node.nodeValue.replace(/FISH LOG/g, "FISHING LOG");
+        }
         node = walker.nextNode();
       }
     };
