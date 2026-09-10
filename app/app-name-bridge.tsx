@@ -8,8 +8,8 @@ export default function AppNameBridge() {
       const walker = document.createTreeWalker(document.body, NodeFilter.SHOW_TEXT);
       let node = walker.nextNode();
       while (node) {
-        if (node.nodeValue?.trim() === "FISH LOG" || node.nodeValue?.trim() === "피시로그") {
-          node.nodeValue = node.nodeValue.replace(/FISH LOG|피시로그/g, "피싱로그");
+        if (node.nodeValue?.includes("피시로그")) {
+          node.nodeValue = node.nodeValue.replace(/피시로그/g, "피싱로그");
         }
         node = walker.nextNode();
       }
