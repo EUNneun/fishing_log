@@ -1,0 +1,77 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 1536 1024">
+  <defs>
+    <style>
+      .line{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:24}
+      .eye{fill:#26364d}
+      .shine{fill:#fff;opacity:.9}
+    </style>
+  </defs>
+
+  <!-- 꽃게 -->
+  <g transform="translate(0 0)">
+    <g transform="translate(256 256)">
+      <path class="line" stroke="#d95f57" d="M-135 20l-80 55M-120 70l-70 80M135 20l80 55M120 70l70 80M-120-20l-95-45M120-20l95-45"/>
+      <circle cx="-192" cy="-84" r="34" fill="#ef7b72"/>
+      <circle cx="192" cy="-84" r="34" fill="#ef7b72"/>
+      <ellipse cx="0" cy="20" rx="150" ry="105" fill="#ef7b72"/>
+      <circle class="eye" cx="-48" cy="-4" r="16"/><circle class="eye" cx="48" cy="-4" r="16"/>
+      <circle class="shine" cx="-43" cy="-9" r="5"/><circle class="shine" cx="53" cy="-9" r="5"/>
+      <path class="line" stroke="#b94a43" d="M-35 48q35 30 70 0"/>
+    </g>
+  </g>
+
+  <!-- 참돔 -->
+  <g transform="translate(512 0)">
+    <g transform="translate(256 256)">
+      <path d="M-115 0l-120-95v190z" fill="#df6c84"/>
+      <ellipse cx="35" cy="0" rx="175" ry="112" fill="#f08aa0"/>
+      <path d="M-35-92q35-65 85-20M-20 92q45 55 95 0" fill="#f5a2b2"/>
+      <circle class="eye" cx="130" cy="-25" r="16"/><circle class="shine" cx="136" cy="-31" r="5"/>
+      <path class="line" stroke="#c95570" d="M162 20q25 8 42-2M0-65q22 24 44 0M10-8q22 24 44 0M0 52q22 24 44 0"/>
+    </g>
+  </g>
+
+  <!-- 쭈꾸미 -->
+  <g transform="translate(1024 0)">
+    <g transform="translate(256 256)">
+      <ellipse cx="0" cy="-45" rx="138" ry="155" fill="#ef796c"/>
+      <path class="line" stroke="#ef796c" d="M-110 70q-80 95-15 135M-55 90q-45 110 10 145M10 92q-5 110 45 135M70 82q55 90 15 140M120 60q90 70 40 130"/>
+      <circle class="eye" cx="-48" cy="-56" r="18"/><circle class="eye" cx="48" cy="-56" r="18"/>
+      <circle class="shine" cx="-42" cy="-62" r="6"/><circle class="shine" cx="54" cy="-62" r="6"/>
+      <path class="line" stroke="#c95f58" d="M-28-5q28 22 56 0"/>
+    </g>
+  </g>
+
+  <!-- 갑오징어 -->
+  <g transform="translate(0 512)">
+    <g transform="translate(256 256)">
+      <ellipse cx="0" cy="-15" rx="126" ry="175" fill="#9876d2"/>
+      <ellipse cx="0" cy="-15" rx="160" ry="135" fill="none" stroke="#b59be0" stroke-width="30"/>
+      <path class="line" stroke="#9876d2" d="M-75 115q-40 80-5 115M-25 125q-15 75 15 110M25 125q15 75-15 110M75 115q40 80 5 115"/>
+      <circle class="eye" cx="-45" cy="-45" r="17"/><circle class="eye" cx="45" cy="-45" r="17"/>
+      <circle class="shine" cx="-40" cy="-50" r="5"/><circle class="shine" cx="50" cy="-50" r="5"/>
+    </g>
+  </g>
+
+  <!-- 한치 -->
+  <g transform="translate(512 512)">
+    <g transform="translate(256 256)">
+      <path d="M0-210l-92 110 92 45 92-45z" fill="#5ea6d9"/>
+      <ellipse cx="0" cy="-5" rx="82" ry="155" fill="#6fb9e8"/>
+      <path class="line" stroke="#6fb9e8" d="M-58 105q-55 90-18 130M-18 125q-25 80 4 115M18 125q25 80-4 115M58 105q55 90 18 130"/>
+      <circle class="eye" cx="-30" cy="-20" r="15"/><circle class="eye" cx="30" cy="-20" r="15"/>
+      <circle class="shine" cx="-25" cy="-25" r="5"/><circle class="shine" cx="35" cy="-25" r="5"/>
+    </g>
+  </g>
+
+  <!-- 우럭 -->
+  <g transform="translate(1024 512)">
+    <g transform="translate(256 256)">
+      <path d="M-130 5l-115-88v176z" fill="#607b9f"/>
+      <ellipse cx="28" cy="5" rx="180" ry="112" fill="#7892b3"/>
+      <path d="M-55-97l45-78 40 70 45-60 34 88" fill="#667f9f"/>
+      <circle class="eye" cx="135" cy="-25" r="16"/><circle class="shine" cx="141" cy="-31" r="5"/>
+      <path class="line" stroke="#536d8e" d="M168 22q22 10 38-2M-30-45q25 25 50 0M10 15q25 25 50 0M-20 70q25 25 50 0"/>
+    </g>
+  </g>
+</svg>
