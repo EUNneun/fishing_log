@@ -178,14 +178,18 @@ main > div > header + div > div:first-child {
   height: 2.5rem !important;
 }
 
-/* Small circular add button aligned to the right edge of the app. */
+/* Circular add button with equal right/bottom spacing. */
 button.fixed.bottom-5 {
   left: auto !important;
   right: max(1rem, calc((100vw - 28rem) / 2 + 1rem)) !important;
-  width: 3.25rem !important;
+  bottom: 1rem !important;
+  width: 3.9rem !important;
   max-width: none !important;
-  min-width: 3.25rem !important;
-  height: 3.25rem !important;
+  min-width: 3.9rem !important;
+  height: 3.9rem !important;
+  min-height: 3.9rem !important;
+  aspect-ratio: 1 / 1 !important;
+  box-sizing: border-box !important;
   padding: 0 !important;
   border-radius: 9999px !important;
   transform: none !important;
@@ -200,8 +204,8 @@ button.fixed.bottom-5 {
 
 button.fixed.bottom-5 svg {
   display: block !important;
-  width: 1.4rem !important;
-  height: 1.4rem !important;
+  width: 1.68rem !important;
+  height: 1.68rem !important;
   margin: 0 !important;
   padding: 0 !important;
   position: static !important;
