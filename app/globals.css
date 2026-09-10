@@ -183,11 +183,11 @@ button.fixed.bottom-5 {
   left: auto !important;
   right: max(1rem, calc((100vw - 28rem) / 2 + 1rem)) !important;
   bottom: 1rem !important;
-  width: 3.9rem !important;
+  width: 4.5rem !important;
   max-width: none !important;
-  min-width: 3.9rem !important;
-  height: 3.9rem !important;
-  min-height: 3.9rem !important;
+  min-width: 4.5rem !important;
+  height: 4.5rem !important;
+  min-height: 4.5rem !important;
   aspect-ratio: 1 / 1 !important;
   box-sizing: border-box !important;
   padding: 0 !important;
@@ -204,8 +204,8 @@ button.fixed.bottom-5 {
 
 button.fixed.bottom-5 svg {
   display: block !important;
-  width: 1.68rem !important;
-  height: 1.68rem !important;
+  width: 1.95rem !important;
+  height: 1.95rem !important;
   margin: 0 !important;
   padding: 0 !important;
   position: static !important;
