@@ -11,6 +11,8 @@ export default function HomeTabsBridge() {
       document.querySelectorAll<HTMLElement>('[data-slot="tabs-list"]').forEach((list) => {
         if (list.innerText.includes("캘린더") && list.innerText.includes("기록 목록")) list.style.display = "none";
       });
+      const addButton = document.querySelector<HTMLElement>('button[aria-label="출조 기록하기"]');
+      if (addButton) addButton.style.bottom = "92px";
     };
     simplify();
     const observer = new MutationObserver(simplify);
