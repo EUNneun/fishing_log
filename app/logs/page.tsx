@@ -5,15 +5,15 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { collection, getDocs } from "firebase/firestore";
 import { CalendarDays, MapPin, Plus, ShipWheel, WalletCards, Waves } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
+import { getGuestLogs } from "@/lib/guest-storage";
 
 type Log = { id:string; tripDate:string; location:string; boatName:string; fee:number; species:string; rig:string; weather:string; catchCount:number; maxSize:number|null; memo:string };
 
 export default function LogsPage() {
   const [user,setUser]=useState<User|null>(null); const [logs,setLogs]=useState<Log[]>([]); const [loading,setLoading]=useState(true);
-  useEffect(()=>onAuthStateChanged(auth, async next=>{ setUser(next); if(!next){setLoading(false);return;} try{const snap=await getDocs(collection(db,"users",next.uid,"logs"));setLogs(snap.docs.map(d=>({id:d.id,...d.data()} as Log)).sort((a,b)=>b.tripDate.localeCompare(a.tripDate)));}finally{setLoading(false);}}),[]);
+  useEffect(()=>onAuthStateChanged(auth, async next=>{ setUser(next); if(!next){setLogs(getGuestLogs<Log>() .sort((a,b)=>b.tripDate.localeCompare(a.tripDate)));setLoading(false);return;} try{const snap=await getDocs(collection(db,"users",next.uid,"logs"));setLogs(snap.docs.map(d=>({id:d.id,...d.data()} as Log)).sort((a,b)=>b.tripDate.localeCompare(a.tripDate)));}finally{setLoading(false);}}),[]);
   const totalCatch=useMemo(()=>logs.reduce((s,l)=>s+(l.catchCount||0),0),[logs]);
   const money=new Intl.NumberFormat("ko-KR");
-  if(!user&&!loading) return <Shell><Empty text="로그인 후 출조 기록을 확인할 수 있어요." /></Shell>;
   return <Shell>
     <header className="flex h-[76px] items-center justify-between px-[22px] pb-2 pt-[18px]"><div><p className="text-xs font-semibold text-[#8a90a0]">MY FISHING LOG</p><h1 className="mt-1 text-[23px] font-extrabold tracking-[-.7px] text-[#2f3142]">출조 기록</h1></div><div className="rounded-full bg-[#eef4fc] px-3 py-2 text-xs font-semibold text-[#607a9e]">{logs.length}회 · {totalCatch}마리</div></header>
     <section className="px-4 pb-28 pt-2">
