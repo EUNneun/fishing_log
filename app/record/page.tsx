@@ -12,7 +12,7 @@ import { Textarea } from "@/components/ui/textarea";
 import { auth, db } from "@/lib/firebase";
 import { createGuestId, getGuestLog, saveGuestLog } from "@/lib/guest-storage";
 
-const speciesNames = ["꽃게", "참돔", "쭈꾸미", "갑오징어", "한치", "우럭"] as const;
+const speciesNames = ["꽃게", "참돔", "쭈꾸미", "갑오징어", "한치", "우럭", "가자미"] as const;
 type Region = "서해" | "남해" | "동해" | "제주";
 const regions: Region[] = ["서해", "남해", "동해", "제주"];
 
