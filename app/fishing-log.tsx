@@ -34,14 +34,14 @@ type Log = {
 };
 
 const speciesCharacters = {
-  "꽃게": { position: "0% 0%", color: "#368bd0", bg: "#edf7ff" },
-  "참돔": { position: "33.333% 0%", color: "#dd6680", bg: "#fff0f3" },
-  "쭈꾸미": { position: "66.667% 0%", color: "#e3675f", bg: "#fff1ed" },
-  "갑오징어": { position: "100% 0%", color: "#8865c9", bg: "#f4efff" },
-  "한치": { position: "0% 100%", color: "#438dc5", bg: "#edf8ff" },
-  "우럭": { position: "33.333% 100%", color: "#60789f", bg: "#eef3fa" },
-  "가자미": { position: "66.667% 100%", color: "#8a765f", bg: "#f7f2ea" },
-  "문어": { position: "100% 100%", color: "#b86d75", bg: "#fff0f2" },
+  "꽃게": { image: "/fishing_log/species-crab.svg", color: "#368bd0", bg: "#edf7ff" },
+  "참돔": { image: "/fishing_log/species-seabream.svg", color: "#dd6680", bg: "#fff0f3" },
+  "쭈꾸미": { image: "/fishing_log/species-webfoot.svg", color: "#e3675f", bg: "#fff1ed" },
+  "갑오징어": { image: "/fishing_log/species-cuttlefish.svg", color: "#8865c9", bg: "#f4efff" },
+  "한치": { image: "/fishing_log/species-squid.svg", color: "#438dc5", bg: "#edf8ff" },
+  "우럭": { image: "/fishing_log/species-rockfish.svg", color: "#60789f", bg: "#eef3fa" },
+  "가자미": { image: "/fishing_log/species-flounder.svg", color: "#8a765f", bg: "#f7f2ea" },
+  "문어": { image: "/fishing_log/species-octopus.svg", color: "#b86d75", bg: "#fff0f2" },
 } as const;
 
 type SpeciesName = keyof typeof speciesCharacters;
@@ -343,7 +343,7 @@ function RatingSummary({ label, value }: { label: string; value?: number | null 
 
 function SpeciesBadge({ species, compact = false, showName = false }: { species: string; compact?: boolean; showName?: boolean }) {
   const character = speciesCharacters[species as SpeciesName] || speciesCharacters["우럭"];
-  return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? "size-6 rounded-full ring-2 ring-white" : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}><span aria-hidden className={compact ? "size-6 shrink-0 rounded-full" : "size-7 shrink-0 rounded-full"} style={{ backgroundImage: "url('/fishing_log/species-characters.svg')", backgroundSize: "400% 200%", backgroundPosition: character.position, backgroundRepeat: "no-repeat" }} />{showName && <span>{species}</span>}</span>;
+  return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? "size-6 rounded-full ring-2 ring-white" : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}><span aria-hidden className={compact ? "size-6 shrink-0" : "size-7 shrink-0"} style={{ backgroundImage: `url('${character.image}')`, backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundSize: "contain" }} />{showName && <span>{species}</span>}</span>;
 }
 
 function LogCards({ logs, money }: { logs: Log[]; money: Intl.NumberFormat }) {
