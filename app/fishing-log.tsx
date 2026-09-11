@@ -13,6 +13,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } from "@/components/ui/dialog";
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { auth, db, googleProvider } from "@/lib/firebase";
+import { getGuestLogs, getGuestSettings, migrateGuestData, saveGuestSettings } from "@/lib/guest-storage";
 
 type Log = {
   id: string;
@@ -97,16 +98,16 @@ export default function FishingLog() {
 
   useEffect(() => {
     if (!user) {
-      setLogs([]);
-      setSettings(defaultSettings);
+      setLogs(getGuestLogs<Log & { id: string }>().sort((a, b) => b.tripDate.localeCompare(a.tripDate)));
+      setSettings(getGuestSettings(defaultSettings));
       setLoading(false);
       return;
     }
     setLoading(true);
-    Promise.all([
+    migrateGuestData(user).then(() => Promise.all([
       getDocs(collection(db, "users", user.uid, "logs")),
       getDoc(doc(db, "users", user.uid, "settings", "main")),
-    ]).then(([logSnapshot, settingsSnapshot]) => {
+    ])).then(([logSnapshot, settingsSnapshot]) => {
       setLogs(logSnapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Log)).sort((a, b) => b.tripDate.localeCompare(a.tripDate)));
       if (settingsSnapshot.exists()) setSettings(settingsSnapshot.data() as UserSettings);
     }).catch((e) => setError(e instanceof Error ? e.message : "데이터를 불러오지 못했습니다."))
@@ -147,11 +148,11 @@ export default function FishingLog() {
 
   async function saveSettings(e: React.FormEvent) {
     e.preventDefault();
-    if (!user) return;
     setSettingsSaving(true);
     setError("");
     try {
-      await setDoc(doc(db, "users", user.uid, "settings", "main"), settings);
+      if (user) await setDoc(doc(db, "users", user.uid, "settings", "main"), settings);
+      else saveGuestSettings(settings);
       setSettingsOpen(false);
     } catch (e) {
       setError(e instanceof Error ? e.message : "설정을 저장하지 못했습니다.");
@@ -164,7 +165,6 @@ export default function FishingLog() {
   }
 
   if (!authReady) return <CenteredMessage title="FISH LOG" description="로그인 정보를 확인하는 중입니다." />;
-  if (!user) return <LoginScreen error={error} onLogin={login} />;
 
   return (
     <main className="min-h-dvh bg-[#eaf3ff] text-[#29456f]">
@@ -174,6 +174,7 @@ export default function FishingLog() {
           <div className="relative flex items-center justify-between">
             <div><p className="text-sm font-medium text-white/80">나의 출조 기록</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-white">FISH LOG</h1></div>
             <div className="flex items-center gap-2">
+              {!user && <button type="button" onClick={login} className="rounded-xl bg-white/25 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/35">로그인</button>}
               <button type="button" onClick={() => setSettingsOpen(true)} className="flex size-10 items-center justify-center rounded-xl bg-white/25 text-white transition hover:bg-white/35" aria-label="설정"><Settings className="size-5" /></button>
               <div className="flex size-12 items-center justify-center rounded-2xl bg-white/90 shadow-lg shadow-[#4387df]/20" aria-label={bestSpecies === "–" ? "주력 어종 없음" : `주력 어종 ${bestSpecies}`} title={bestSpecies === "–" ? "주력 어종 없음" : `주력 어종: ${bestSpecies}`}>
                 {bestSpecies === "–" ? <Waves className="size-6 text-[#74a9e8]" /> : <SpeciesBadge species={bestSpecies} compact />}
@@ -227,7 +228,7 @@ export default function FishingLog() {
               <Field label="선호 물때 (1~15)"><Input required inputMode="text" placeholder="예: 1~5 또는 3, 4, 5, 10" value={settings.preferredTides} onChange={(e) => setSettings({ ...settings, preferredTides: e.target.value })} /><p className="text-xs leading-5 text-[#8aa0be]">범위는 1~5, 개별 숫자는 쉼표로 구분해주세요. 해당 날짜에 ★가 표시됩니다.</p></Field>
               <Button disabled={settingsSaving} type="submit" className="h-12 w-full rounded-xl bg-[#5e9bf2] font-extrabold text-white hover:bg-[#4f8ee8]">{settingsSaving ? "저장 중..." : "설정 저장"}</Button>
             </form>
-            <div className="mt-1 border-t border-[#dbe8fa] pt-4"><p className="text-sm font-bold text-[#496789]">계정</p><p className="mt-1 truncate text-xs text-[#8298b8]">{user.email ?? "Google 계정"}</p><Button type="button" variant="outline" onClick={logout} className="mt-3 h-11 w-full rounded-xl border-[#c9def7] bg-white text-[#607a9e] hover:bg-[#eef6ff]"><LogOut className="size-4" />로그아웃</Button></div>
+            <div className="mt-1 border-t border-[#dbe8fa] pt-4"><p className="text-sm font-bold text-[#496789]">계정</p>{user ? <><p className="mt-1 truncate text-xs text-[#8298b8]">{user.email ?? "Google 계정"}</p><Button type="button" variant="outline" onClick={logout} className="mt-3 h-11 w-full rounded-xl border-[#c9def7] bg-white text-[#607a9e] hover:bg-[#eef6ff]"><LogOut className="size-4" />로그아웃</Button></> : <><p className="mt-1 text-xs leading-5 text-[#8298b8]">현재 기록은 이 기기에 저장됩니다. 로그인하면 계정으로 자동 이동됩니다.</p><Button type="button" onClick={login} className="mt-3 h-11 w-full rounded-xl bg-[#5e9bf2] font-bold text-white">Google로 로그인</Button></>}</div>
           </DialogContent>
         </Dialog>
       </div>
