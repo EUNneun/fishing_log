@@ -68,6 +68,14 @@ export function saveHitRecord(hit: HitRecord) {
   localStorage.setItem(HITS_KEY, JSON.stringify(hits));
 }
 
+export function getLastSessionHit(sessionId: string) {
+  return getHitRecords().find((hit) => hit.sessionId === sessionId) ?? null;
+}
+
+export function getTripHits(tripId: string) {
+  return getHitRecords().filter((hit) => hit.tripId === tripId);
+}
+
 export function getSessionHits(sessionId: string) {
   return getHitRecords().filter((hit) => hit.sessionId === sessionId);
 }
