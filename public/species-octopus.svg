@@ -1,0 +1,11 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 256 256">
+  <defs><style>.line{fill:none;stroke-linecap:round;stroke-linejoin:round;stroke-width:10}.eye{fill:#26364d}.shine{fill:#fff}</style></defs>
+  <g transform="translate(128 122)">
+    <ellipse cx="0" cy="-28" rx="66" ry="78" fill="#c9767d"/>
+    <path d="M-52-62q-33 13-42 44 27-13 48-8M52-62q33 13 42 44-27-13-48-8" fill="#d88c92"/>
+    <path class="line" stroke="#c9767d" d="M-52 26q-47 45-18 83M-27 38q-28 55 2 86M0 42q0 58 24 84M28 37q28 52 7 88M52 24q49 43 20 84"/>
+    <circle class="eye" cx="-24" cy="-34" r="9"/><circle class="eye" cx="24" cy="-34" r="9"/>
+    <circle class="shine" cx="-21" cy="-37" r="3"/><circle class="shine" cx="27" cy="-37" r="3"/>
+    <path class="line" stroke="#a9565e" d="M-15-2q15 12 30 0"/>
+  </g>
+</svg>

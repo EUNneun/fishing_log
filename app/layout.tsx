@@ -2,7 +2,6 @@ import type { Metadata } from "next";
 import "./globals.css";
 import SettingsRouteBridge from "./settings-route-bridge";
 import AppNameBridge from "./app-name-bridge";
-import RecordEditBridge from "./record-edit-bridge";
 import BottomNav from "./bottom-nav";
 import HomeTabsBridge from "./home-tabs-bridge";
 import VersionChecker from "./version-checker";
@@ -18,5 +17,5 @@ export const metadata: Metadata = {
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {
-  return <html lang="ko"><body className="antialiased"><VersionChecker /><SettingsRouteBridge /><AppNameBridge /><RecordEditBridge /><HomeTabsBridge /><SpeciesRequestBridge />{children}<BottomNav /></body></html>;
+  return <html lang="ko"><body className="antialiased"><VersionChecker /><SettingsRouteBridge /><AppNameBridge /><HomeTabsBridge /><SpeciesRequestBridge />{children}<BottomNav /></body></html>;
 }

@@ -34,14 +34,14 @@ type Log = {
 };
 
 const speciesCharacters = {
-  "꽃게": { position: "0% 0%", color: "#368bd0", bg: "#edf7ff" },
-  "참돔": { position: "50% 0%", color: "#dd6680", bg: "#fff0f3" },
-  "쭈꾸미": { position: "100% 0%", color: "#e3675f", bg: "#fff1ed" },
-  "갑오징어": { position: "0% 100%", color: "#8865c9", bg: "#f4efff" },
-  "한치": { position: "50% 100%", color: "#438dc5", bg: "#edf8ff" },
-  "우럭": { position: "100% 100%", color: "#60789f", bg: "#eef3fa" },
-  "가자미": { position: "100% 100%", color: "#8a765f", bg: "#f7f2ea" },
-  "문어": { position: "100% 0%", color: "#b86d75", bg: "#fff0f2" },
+  "꽃게": { position: "0% 0%", color: "#368bd0", bg: "#edf7ff", image: undefined },
+  "참돔": { position: "50% 0%", color: "#dd6680", bg: "#fff0f3", image: undefined },
+  "쭈꾸미": { position: "100% 0%", color: "#e3675f", bg: "#fff1ed", image: undefined },
+  "갑오징어": { position: "0% 100%", color: "#8865c9", bg: "#f4efff", image: undefined },
+  "한치": { position: "50% 100%", color: "#438dc5", bg: "#edf8ff", image: undefined },
+  "우럭": { position: "100% 100%", color: "#60789f", bg: "#eef3fa", image: undefined },
+  "가자미": { position: "50% 50%", color: "#8a765f", bg: "#f7f2ea", image: "/fishing_log/species-flounder.svg" },
+  "문어": { position: "50% 50%", color: "#b86d75", bg: "#fff0f2", image: "/fishing_log/species-octopus.svg" },
 } as const;
 
 type SpeciesName = keyof typeof speciesCharacters;
@@ -96,11 +96,19 @@ export default function FishingLog() {
   const [quickSpecies, setQuickSpecies] = useState("갑오징어");
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [holidays, setHolidays] = useState<Record<string, string>>({});
+  const [compactHeader, setCompactHeader] = useState(false);
 
   useEffect(() => onAuthStateChanged(auth, (nextUser) => {
     setUser(nextUser);
     setAuthReady(true);
   }), []);
+
+  useEffect(() => {
+    const onScroll = () => setCompactHeader(window.scrollY > 120);
+    onScroll();
+    window.addEventListener("scroll", onScroll, { passive: true });
+    return () => window.removeEventListener("scroll", onScroll);
+  }, []);
 
   useEffect(() => {
     const syncFishingMode = () => setFishingSession(getFishingSession());
@@ -186,6 +194,18 @@ export default function FishingLog() {
 
   return (
     <main className="min-h-dvh bg-[#eaf3ff] text-[#29456f]">
+      {compactHeader && <div className="fixed inset-x-0 top-0 z-[65] mx-auto max-w-md border-b border-white/20 bg-[#77adf5]/95 px-4 pb-2 pt-[max(8px,env(safe-area-inset-top))] shadow-md backdrop-blur">
+        <div className="flex h-11 items-center justify-between gap-3">
+          <div className="min-w-0">
+            <div className="flex items-center gap-2"><strong className="text-sm font-black tracking-wide text-white">FISHING LOG</strong>{fishingSession && <span className="inline-flex items-center gap-1 rounded-full bg-[#173d67]/85 px-2 py-1 text-[10px] font-bold text-white"><span className="size-1.5 rounded-full bg-[#ff6262]" />낚시 중</span>}</div>
+            <p className="mt-0.5 text-[11px] font-semibold text-white/80">{logs.length}회 · {totalCatch}마리{bestSpecies !== "–" ? ` · ${bestSpecies}` : ""}</p>
+          </div>
+          <div className="flex shrink-0 items-center gap-2">
+            {!user && <button type="button" onClick={login} className="h-9 rounded-xl bg-white/20 px-3 text-xs font-bold text-white">로그인</button>}
+            <button type="button" onClick={() => setSettingsOpen(true)} className="grid size-9 place-items-center rounded-xl bg-white/20 text-white" aria-label="설정"><Settings className="size-4.5" /></button>
+          </div>
+        </div>
+      </div>}
       <div className="mx-auto min-h-dvh max-w-md bg-[#f5f9ff] pb-28 shadow-2xl shadow-[#4a8ee8]/15 md:my-6 md:min-h-[calc(100dvh-3rem)] md:overflow-hidden md:rounded-[2rem]">
         <header className="relative overflow-hidden bg-gradient-to-br from-[#79aef7] via-[#9bc8ff] to-[#c6efff] px-5 pb-7 pt-6">
           <div className="absolute -right-12 -top-16 h-52 w-52 rounded-full border-[34px] border-white/20" />
@@ -254,7 +274,7 @@ export default function FishingLog() {
 
         {fishingSession ? (
           <>
-            <div className="fixed left-1/2 top-3 z-[70] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#173d67] px-4 py-2 text-xs font-bold text-white shadow-lg">
+            <div className={`${compactHeader ? "hidden" : "fixed"} left-1/2 top-3 z-[70] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#173d67] px-4 py-2 text-xs font-bold text-white shadow-lg`}>
               <span className="size-2 animate-pulse rounded-full bg-[#ff6464]" />
               낚시 중 · {fishingSession.species}
               <button type="button" onClick={() => { if (confirm("낚시모드를 종료할까요?")) { stopFishingSession(); setFishingSession(null); } }} className="ml-1 text-white/70">종료</button>
@@ -323,7 +343,8 @@ function RatingSummary({ label, value }: { label: string; value?: number | null 
 
 function SpeciesBadge({ species, compact = false, showName = false }: { species: string; compact?: boolean; showName?: boolean }) {
   const character = speciesCharacters[species as SpeciesName] || speciesCharacters["우럭"];
-  return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? "size-6 rounded-full ring-2 ring-white" : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}><span aria-hidden className={compact ? "size-6 shrink-0 rounded-full" : "size-7 shrink-0 rounded-full"} style={{ backgroundImage: "url('/fishing_log/species-characters.png')", backgroundSize: "300% 200%", backgroundPosition: character.position, backgroundRepeat: "no-repeat" }} />{showName && <span>{species}</span>}</span>;
+  const image = character.image ?? "/fishing_log/species-characters.svg";
+  return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? "size-6 rounded-full ring-2 ring-white" : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}><span aria-hidden className={compact ? "size-6 shrink-0 rounded-full" : "size-7 shrink-0 rounded-full"} style={{ backgroundImage: `url('${image}')`, backgroundSize: character.image ? "contain" : "300% 200%", backgroundPosition: character.position, backgroundRepeat: "no-repeat" }} />{showName && <span>{species}</span>}</span>;
 }
 
 function LogCards({ logs, money }: { logs: Log[]; money: Intl.NumberFormat }) {
