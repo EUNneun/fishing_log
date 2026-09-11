@@ -10,6 +10,7 @@ import { Label } from "@/components/ui/label";
 import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select";
 import { Textarea } from "@/components/ui/textarea";
 import { auth, db } from "@/lib/firebase";
+import { createGuestId, getGuestLog, saveGuestLog } from "@/lib/guest-storage";
 
 const speciesNames = ["꽃게", "참돔", "쭈꾸미", "갑오징어", "한치", "우럭"] as const;
 type Region = "서해" | "남해" | "동해" | "제주";
@@ -118,7 +119,18 @@ export default function RecordPage() {
 
     return onAuthStateChanged(auth, async (nextUser) => {
       setUser(nextUser); setAuthReady(true);
-      if (!nextUser || !id) return;
+      if (!id) return;
+      if (!nextUser) {
+        const data = getGuestLog<Record<string, unknown> & { id: string }>(id);
+        if (!data) { setError("기록을 찾지 못했습니다."); return; }
+        const location = String(data.location ?? "");
+        const matchedPort = ports.find((p) => p.name === location || p.aliases?.includes(location));
+        const region = (data.region as Region | undefined) ?? matchedPort?.region ?? "";
+        const tripDate = String(data.tripDate ?? today());
+        const tide = region ? String(data.tide ?? tideNumber(tripDate, region)) : "";
+        setForm({ tripDate, weather:String(data.weather??"맑음"), location, region, tide, boatName:String(data.boatName??""), fee:String(data.fee??""), species:String(data.species??""), rig:String(data.rig??""), catchCount:String(data.catchCount??""), maxSize:data.maxSize==null?"":String(data.maxSize), memo:String(data.memo??""), boatCondition:data.boatCondition==null?"":String(data.boatCondition), captainSkill:data.captainSkill==null?"":String(data.captainSkill), mealRating:data.mealRating==null?"":String(data.mealRating) });
+        return;
+      }
       try {
         const snapshot = await getDoc(doc(db, "users", nextUser.uid, "logs", id));
         if (!snapshot.exists()) { setError("기록을 찾지 못했습니다."); return; }
@@ -165,7 +177,7 @@ export default function RecordPage() {
   const setRating = (key: "boatCondition" | "captainSkill" | "mealRating") => (value: number) => setForm({ ...form, [key]: String(value) });
 
   async function submit(e: React.FormEvent) {
-    e.preventDefault(); if (!user) return;
+    e.preventDefault();
     if (!form.location.trim()) { setError("항구를 입력해주세요."); return; }
     if (!form.region || !form.tide) { setError("검색에 없는 항구라면 지역을 직접 선택해주세요."); return; }
     setSaving(true); setError("");
@@ -178,16 +190,19 @@ export default function RecordPage() {
       updatedAt: serverTimestamp(),
     };
     try {
-      if (editId) await setDoc(doc(db, "users", user.uid, "logs", editId), payload, { merge: true });
-      else await addDoc(collection(db, "users", user.uid, "logs"), { ...payload, createdAt: serverTimestamp() });
+      if (user) {
+        if (editId) await setDoc(doc(db, "users", user.uid, "logs", editId), payload, { merge: true });
+        else await addDoc(collection(db, "users", user.uid, "logs"), { ...payload, createdAt: serverTimestamp() });
+      } else {
+        const id = editId || createGuestId();
+        saveGuestLog({ id, ...payload, createdAt: new Date().toISOString() });
+      }
       window.location.href = "/fishing_log/";
     } catch (e) { setError(e instanceof Error ? e.message : "저장하지 못했습니다."); }
     finally { setSaving(false); }
   }
 
   if (!authReady) return <main className="min-h-dvh bg-[#eaf3ff] p-6 text-center text-[#8298b8]">로그인 정보를 확인하는 중입니다.</main>;
-  if (!user) return <main className="flex min-h-dvh items-center justify-center bg-[#eaf3ff] p-6 text-[#29456f]"><div className="w-full max-w-md rounded-2xl bg-white p-6 text-center shadow-sm"><p className="font-bold">로그인이 필요합니다.</p><Button type="button" onClick={() => { window.location.href = "/fishing_log/"; }} className="mt-4">홈으로 돌아가기</Button></div></main>;
-
   return (
     <main className="min-h-dvh bg-[#eaf3ff] text-[#29456f]">
       <div className="mx-auto min-h-dvh max-w-md bg-[#f7fbff] pb-10 shadow-2xl shadow-[#4a8ee8]/15 md:my-6 md:min-h-[calc(100dvh-3rem)] md:rounded-[2rem]">
