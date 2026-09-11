@@ -253,3 +253,25 @@ button.fixed.bottom-5 svg {
     padding-top: 0.5rem !important;
   }
 }
+
+
+/* Home fixed navigation compatibility */
+button[aria-label="출조 기록하기"] {
+  position: fixed !important;
+  right: max(1rem, calc((100vw - 430px) / 2 + 1rem)) !important;
+  bottom: calc(5.75rem + env(safe-area-inset-bottom)) !important;
+  z-index: 60 !important;
+}
+
+/* Always use the valid SVG species sprite on iOS/PWA. */
+span[title="꽃게"] > span[aria-hidden],
+span[title="참돔"] > span[aria-hidden],
+span[title="쭈꾸미"] > span[aria-hidden],
+span[title="갑오징어"] > span[aria-hidden],
+span[title="한치"] > span[aria-hidden],
+span[title="우럭"] > span[aria-hidden] {
+  background-image: url("/fishing_log/species-characters.svg") !important;
+  background-size: 300% 200% !important;
+  background-repeat: no-repeat !important;
+  display: inline-block !important;
+}
