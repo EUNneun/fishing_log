@@ -31,6 +31,11 @@ export function getGuestLog<T extends StoredLog = StoredLog>(id: string): T | nu
   return getGuestLogs<T>().find((item) => item.id === id) ?? null;
 }
 
+export function deleteGuestLog(id: string) {
+  const logs = getGuestLogs();
+  localStorage.setItem(LOGS_KEY, JSON.stringify(logs.filter((item) => item.id !== id)));
+}
+
 export function getGuestSettings(defaults: GuestSettings): GuestSettings {
   if (typeof window === "undefined") return defaults;
   try {

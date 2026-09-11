@@ -80,3 +80,9 @@ export function getTripHits(tripId: string) {
 export function getSessionHits(sessionId: string) {
   return getHitRecords().filter((hit) => hit.sessionId === sessionId);
 }
+
+export function deleteTripHits(tripId: string) {
+  const remaining = getHitRecords().filter((hit) => hit.tripId !== tripId);
+  localStorage.setItem(HITS_KEY, JSON.stringify(remaining));
+  return remaining;
+}

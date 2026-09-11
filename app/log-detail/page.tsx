@@ -1,12 +1,12 @@
 "use client";
 
 import { useEffect, useState } from "react";
-import { ArrowLeft, MapPin, Ruler, Waves } from "lucide-react";
+import { ArrowLeft, MapPin, Pencil, Ruler, Trash2, Waves } from "lucide-react";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { doc, getDoc } from "firebase/firestore";
+import { deleteDoc, doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
-import { getGuestLog } from "@/lib/guest-storage";
-import { getTripHits, type HitRecord } from "@/lib/fishing-mode";
+import { deleteGuestLog, getGuestLog } from "@/lib/guest-storage";
+import { deleteTripHits, getFishingSession, getTripHits, stopFishingSession, type HitRecord } from "@/lib/fishing-mode";
 
 type Trip = {
   id: string;
@@ -28,6 +28,7 @@ export default function LogDetailPage() {
   const [trip,setTrip]=useState<Trip|null>(null);
   const [hits,setHits]=useState<HitRecord[]>([]);
   const [loading,setLoading]=useState(true);
+  const [deleting,setDeleting]=useState(false);
 
   useEffect(() => onAuthStateChanged(auth, async next => {
     setUser(next);
@@ -45,6 +46,30 @@ export default function LogDetailPage() {
       setLoading(false);
     }
   }), []);
+
+
+  async function deleteTrip() {
+    if (!trip || deleting) return;
+    const hitCount = hits.length;
+    const message = hitCount > 0
+      ? `이 출조기록과 연결된 HIT ${hitCount}건도 함께 삭제됩니다. 삭제할까요?`
+      : "이 출조기록을 삭제할까요?";
+    if (!confirm(message)) return;
+    setDeleting(true);
+    try {
+      if (user) await deleteDoc(doc(db,"users",user.uid,"logs",trip.id));
+      else deleteGuestLog(trip.id);
+
+      deleteTripHits(trip.id);
+      const active = getFishingSession();
+      if (active?.tripId === trip.id) stopFishingSession();
+
+      window.location.href = "/fishing_log/logs/";
+    } catch {
+      alert("출조기록을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.");
+      setDeleting(false);
+    }
+  }
 
   if (loading) return <Shell><p className="pt-24 text-center text-sm text-[#8a90a0]">기록을 불러오는 중...</p></Shell>;
   if (!trip) return <Shell><p className="pt-24 text-center text-sm text-[#8a90a0]">출조기록을 찾지 못했습니다.</p></Shell>;
@@ -68,6 +93,14 @@ export default function LogDetailPage() {
           <span>{trip.rig || "채비 미기록"}</span>
         </div>
         {trip.memo && <p className="mt-4 border-t border-[#eef0f5] pt-4 text-sm leading-6 text-[#7e8495]">{trip.memo}</p>}
+        <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#eef0f5] pt-4">
+          <a href={`/fishing_log/record/?id=${encodeURIComponent(trip.id)}`} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#dbe5f1] bg-white text-sm font-extrabold text-[#607a9e]">
+            <Pencil className="size-4"/>수정
+          </a>
+          <button type="button" disabled={deleting} onClick={deleteTrip} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#ffd6da] bg-[#fff5f6] text-sm font-extrabold text-[#dc5965] disabled:opacity-50">
+            <Trash2 className="size-4"/>{deleting ? "삭제 중..." : "삭제"}
+          </button>
+        </div>
       </div>
 
       <div className="rounded-[22px] border border-[#e3e7f0] bg-white p-5">
