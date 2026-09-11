@@ -192,12 +192,20 @@ export default function RecordPage() {
       updatedAt: serverTimestamp(),
     };
     try {
+      let savedId = editId || "";
       if (user) {
-        if (editId) await setDoc(doc(db, "users", user.uid, "logs", editId), payload, { merge: true });
-        else await addDoc(collection(db, "users", user.uid, "logs"), { ...payload, createdAt: serverTimestamp() });
+        if (editId) {
+          await setDoc(doc(db, "users", user.uid, "logs", editId), payload, { merge: true });
+        } else {
+          const ref = await addDoc(collection(db, "users", user.uid, "logs"), { ...payload, createdAt: serverTimestamp() });
+          savedId = ref.id;
+        }
       } else {
-        const id = editId || createGuestId();
-        saveGuestLog({ id, ...payload, createdAt: new Date().toISOString() });
+        savedId = editId || createGuestId();
+        saveGuestLog({ id: savedId, ...payload, createdAt: new Date().toISOString() });
+      }
+      if (startModeAfterSave) {
+        startFishingSession({ tripId: savedId, species: form.species || "기타", location: form.location.trim(), quickStart: false });
       }
       window.location.href = "/fishing_log/";
     } catch (e) { setError(e instanceof Error ? e.message : "저장하지 못했습니다."); }
@@ -245,6 +253,10 @@ export default function RecordPage() {
 
           <section className="rounded-[1.5rem] border border-[#dfeafa] bg-white p-4 shadow-sm"><div className="mb-4"><p className="text-sm font-extrabold text-[#496789]">선사 컨디션</p><p className="mt-1 text-xs text-[#8aa0be]">선택 평가 · 별 5개 만점</p></div><div className="space-y-4"><StarRating label="배 컨디션" value={Number(form.boatCondition) || 0} onChange={setRating("boatCondition")} /><StarRating label="선장님 조타 실력" value={Number(form.captainSkill) || 0} onChange={setRating("captainSkill")} /><StarRating label="간식/식사" value={Number(form.mealRating) || 0} onChange={setRating("mealRating")} /></div></section>
           <section className="rounded-[1.5rem] border border-[#dfeafa] bg-white p-4 shadow-sm"><Field label="메모 (선택)"><Textarea placeholder="잘 잡힌 시간, 수심, 특이사항 등" value={form.memo} onChange={set("memo")} className="min-h-24" /></Field></section>
+          <label className="flex cursor-pointer items-center justify-between rounded-[1.25rem] border border-[#dbe9fa] bg-[#eef7ff] px-4 py-4">
+            <div><p className="text-sm font-extrabold text-[#315b89]">저장 후 낚시모드 시작</p><p className="mt-1 text-xs text-[#8aa3c2]">이 출조기록과 히트 포인트를 연결합니다.</p></div>
+            <input type="checkbox" checked={startModeAfterSave} onChange={(e) => setStartModeAfterSave(e.target.checked)} className="size-5 accent-[#4f97ee]" />
+          </label>
           <Button disabled={saving} type="submit" className="h-13 w-full rounded-2xl bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] font-extrabold text-white shadow-lg shadow-[#4d94e8]/20 hover:from-[#4f8ee8] hover:to-[#4db7ea]">{saving ? "저장 중..." : editId ? "수정사항 저장" : "기록 저장"}</Button>
         </form>
       </div>
