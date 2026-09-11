@@ -11,7 +11,7 @@ export default function HitPage() {
   const router = useRouter();
   const [session, setSession] = useState<ReturnType<typeof getFishingSession>>(null);
   const [rig, setRig] = useState("");
-  const [bait, setBait] = useState("");
+  const [baits, setBaits] = useState<string[]>([]);
   const [depth, setDepth] = useState("");
   const [size, setSize] = useState("");
   const [memo, setMemo] = useState("");
@@ -27,7 +27,7 @@ export default function HitPage() {
     setHitCount(getSessionHits(active.id).length);
     if (previous) {
       setRig(previous.rig ?? "");
-      setBait(previous.bait ?? "");
+      setBaits(previous.baits ?? (previous.bait ? [previous.bait] : []));
       setDepth(previous.depth == null ? "" : String(previous.depth));
     }
     if (!navigator.geolocation) { setGps("GPS 미지원"); return; }
@@ -42,13 +42,14 @@ export default function HitPage() {
 
   const options = getFishingOptions(session?.species ?? "");
   const rigOptions = Array.from(new Set([...options.rigs, ...(rig && !options.rigs.includes(rig) ? [rig] : []), "기타"]));
-  const baitOptions = Array.from(new Set([...options.baits, ...(bait && !options.baits.includes(bait) ? [bait] : []), "기타"]));
+  const baitOptions = Array.from(new Set([...options.baits, ...baits]));
+  const toggleBait = (value: string) => setBaits(current => current.includes(value) ? current.filter(item => item !== value) : [...current, value]);
 
   const save = () => {
     saveHitRecord({
       id:`hit-${Date.now()}-${Math.random().toString(36).slice(2,7)}`,
       sessionId:session.id, tripId:session.tripId, species:session.species,
-      caughtAt:new Date().toISOString(), rig, bait,
+      caughtAt:new Date().toISOString(), rig, baits, bait:baits.join(", "),
       depth:depth ? Number(depth) : null, size:size ? Number(size) : null, memo,
       ...(location ?? {})
     });
@@ -60,7 +61,8 @@ export default function HitPage() {
     <section className="rounded-[28px] bg-white p-5 shadow-sm">
       <div className="rounded-2xl bg-[#f3f8ff] p-4"><div className="flex items-center justify-between"><p className="font-black text-[#234a78]">{session.species}</p><span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#3988f2]">오늘 {hitCount} HIT</span></div><p className="mt-1 text-xs text-[#8298b8]">{session.location || "빠른 낚시모드"}</p>{hitCount > 0 && <p className="mt-2 text-xs font-semibold text-[#5f83ad]">직전 히트의 채비·미끼·수심을 불러왔습니다.</p>}</div>
       <label className="mt-5 block text-sm font-bold text-[#496789]">채비</label><select value={rig} onChange={e=>setRig(e.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#c9ddf6] bg-white px-3"><option value="">선택</option>{rigOptions.map(v=><option key={v} value={v}>{v}</option>)}</select>
-      <label className="mt-4 block text-sm font-bold text-[#496789]">에기 / 미끼</label><select value={bait} onChange={e=>setBait(e.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#c9ddf6] bg-white px-3"><option value="">선택</option>{baitOptions.map(v=><option key={v} value={v}>{v}</option>)}</select>
+      <label className="mt-4 block text-sm font-bold text-[#496789]">에기 / 미끼 <span className="font-normal text-[#8ca5c4]">· 복수 선택</span></label>
+      <div className="mt-2 flex flex-wrap gap-2">{baitOptions.map(v=><button type="button" key={v} onClick={()=>toggleBait(v)} className={`rounded-full border px-3 py-2 text-xs font-bold transition ${baits.includes(v) ? "border-[#5e9bf2] bg-[#e8f3ff] text-[#3988f2]" : "border-[#d5e3f4] bg-white text-[#6f87a5]"}`}>#{v}</button>)}</div>
       <div className="mt-4 grid grid-cols-2 gap-3"><div><label className="block text-sm font-bold text-[#496789]">수심 (m)</label><input inputMode="decimal" value={depth} onChange={e=>setDepth(e.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#c9ddf6] px-3"/></div><div><label className="block text-sm font-bold text-[#496789]">크기 (cm)</label><input inputMode="decimal" value={size} onChange={e=>setSize(e.target.value)} className="mt-2 h-12 w-full rounded-xl border border-[#c9ddf6] px-3"/></div></div>
       <label className="mt-4 block text-sm font-bold text-[#496789]">메모</label><input value={memo} onChange={e=>setMemo(e.target.value)} placeholder="선택 입력" className="mt-2 h-12 w-full rounded-xl border border-[#c9ddf6] px-3"/>
       <div className="mt-5 flex items-center gap-2 rounded-xl bg-[#eef7ff] px-3 py-3 text-xs text-[#5f83ad]"><MapPin className="size-4"/>{gps}</div>
