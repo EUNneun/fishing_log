@@ -149,6 +149,7 @@ export default function FishingLog() {
     return acc;
   }, {}), [logs]);
   const selectedLogs = selectedDate ? logsByDate[dateKey(selectedDate)] || [] : [];
+  const todayLog = useMemo(() => logs.find((log) => log.tripDate === dateKey(new Date())) || null, [logs]);
   const preferredTides = useMemo(() => parsePreferredTides(settings.preferredTides), [settings.preferredTides]);
   const money = new Intl.NumberFormat("ko-KR");
 
@@ -204,6 +205,22 @@ export default function FishingLog() {
           </section>
         </header>
 
+        {!fishingSession && todayLog && <section className="px-5 pt-4">
+          <div className="rounded-[1.35rem] border border-[#cfe2fb] bg-white p-4 shadow-sm">
+            <div className="flex items-center justify-between gap-3">
+              <div className="min-w-0">
+                <p className="text-[11px] font-bold text-[#8aa0be]">오늘 출조가 있습니다</p>
+                <p className="mt-1 truncate text-sm font-extrabold text-[#29456f]">{todayLog.species} · {todayLog.location}</p>
+                <p className="mt-1 text-xs text-[#8298b8]">낚시모드를 종료했어도 이 출조로 다시 이어갈 수 있어요.</p>
+              </div>
+              <Button type="button" onClick={() => {
+                const session = startFishingSession({ tripId: todayLog.id, species: todayLog.species || "기타", location: todayLog.location, quickStart: false });
+                setFishingSession(session);
+              }} className="h-11 shrink-0 rounded-xl bg-[#173d67] px-4 text-xs font-extrabold text-white hover:bg-[#123354]">다시 시작</Button>
+            </div>
+          </div>
+        </section>}
+
         <Tabs defaultValue="calendar" className="px-5 pt-5">
           <TabsList className="mb-5 h-11 w-full rounded-2xl bg-[#e4effc] p-1">
             <TabsTrigger value="calendar" className="rounded-xl data-[state=active]:bg-white data-[state=active]:text-[#3988f2]"><CalendarDays />캘린더</TabsTrigger>
@@ -248,8 +265,6 @@ export default function FishingLog() {
           </>
         ) : (
           <Button type="button" onClick={() => {
-            const today = dateKey(new Date());
-            const todayLog = logs.find((log) => log.tripDate === today);
             if (todayLog) {
               const session = startFishingSession({ tripId: todayLog.id, species: todayLog.species || "기타", location: todayLog.location, quickStart: false }); setFishingSession(session);
             } else {
