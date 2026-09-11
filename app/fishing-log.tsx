@@ -102,6 +102,17 @@ export default function FishingLog() {
   }), []);
 
   useEffect(() => {
+    const syncFishingMode = () => setFishingSession(getFishingSession());
+    syncFishingMode();
+    window.addEventListener("fishing-mode-change", syncFishingMode);
+    window.addEventListener("storage", syncFishingMode);
+    return () => {
+      window.removeEventListener("fishing-mode-change", syncFishingMode);
+      window.removeEventListener("storage", syncFishingMode);
+    };
+  }, []);
+
+  useEffect(() => {
     if (!user) {
       setLogs(getGuestLogs<Log & { id: string }>().sort((a, b) => b.tripDate.localeCompare(a.tripDate)));
       setSettings(getGuestSettings(defaultSettings));
@@ -228,7 +239,7 @@ export default function FishingLog() {
             <div className="fixed left-1/2 top-3 z-[70] flex -translate-x-1/2 items-center gap-2 rounded-full bg-[#173d67] px-4 py-2 text-xs font-bold text-white shadow-lg">
               <span className="size-2 animate-pulse rounded-full bg-[#ff6464]" />
               낚시 중 · {fishingSession.species}
-              <button type="button" onClick={() => { if (confirm("낚시모드를 종료할까요?")) stopFishingSession(); }} className="ml-1 text-white/70">종료</button>
+              <button type="button" onClick={() => { if (confirm("낚시모드를 종료할까요?")) { stopFishingSession(); setFishingSession(null); } }} className="ml-1 text-white/70">종료</button>
             </div>
             <Button type="button" onClick={() => { window.location.href = "/fishing_log/hit/"; }} aria-label="히트 기록" className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[60] size-[4.5rem] rounded-full bg-[#ff6262] p-0 text-white shadow-xl shadow-[#ff6262]/30 hover:bg-[#f25555]">
               <span className="text-sm font-black">HIT</span>
@@ -239,7 +250,7 @@ export default function FishingLog() {
             const today = dateKey(new Date());
             const todayLog = logs.find((log) => log.tripDate === today);
             if (todayLog) {
-              startFishingSession({ tripId: todayLog.id, species: todayLog.species || "기타", location: todayLog.location, quickStart: false });
+              const session = startFishingSession({ tripId: todayLog.id, species: todayLog.species || "기타", location: todayLog.location, quickStart: false }); setFishingSession(session);
             } else {
               setQuickStartOpen(true);
             }
@@ -257,7 +268,7 @@ export default function FishingLog() {
             </NativeSelect>
             <div className="mt-4 grid grid-cols-2 gap-2">
               <Button type="button" variant="outline" onClick={() => { setQuickStartOpen(false); openRecordPage(); }}>출조기록 작성</Button>
-              <Button type="button" onClick={() => { startFishingSession({ species: quickSpecies, quickStart: true }); setQuickStartOpen(false); }} className="bg-[#5e9bf2] text-white">빠르게 시작</Button>
+              <Button type="button" onClick={() => { const session = startFishingSession({ species: quickSpecies, quickStart: true }); setFishingSession(session); setQuickStartOpen(false); }} className="bg-[#5e9bf2] text-white">빠르게 시작</Button>
             </div>
           </div>
         </div>}
