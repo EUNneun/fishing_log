@@ -11,6 +11,7 @@ import { NativeSelect, NativeSelectOption } from "@/components/ui/native-select"
 import { Textarea } from "@/components/ui/textarea";
 import { auth, db } from "@/lib/firebase";
 import { createGuestId, getGuestLog, saveGuestLog } from "@/lib/guest-storage";
+import { startFishingSession } from "@/lib/fishing-mode";
 
 const speciesNames = ["꽃게", "참돔", "쭈꾸미", "갑오징어", "한치", "우럭", "가자미"] as const;
 type Region = "서해" | "남해" | "동해" | "제주";
@@ -106,6 +107,7 @@ export default function RecordPage() {
   const [authReady, setAuthReady] = useState(false);
   const [form, setForm] = useState<FormState>(freshForm);
   const [saving, setSaving] = useState(false);
+  const [startModeAfterSave, setStartModeAfterSave] = useState(false);
   const [error, setError] = useState("");
   const [editId, setEditId] = useState<string | null>(null);
   const [showPorts, setShowPorts] = useState(false);
