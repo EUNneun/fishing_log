@@ -39,6 +39,7 @@ const speciesCharacters = {
   "갑오징어": { position: "0% 100%", color: "#8865c9", bg: "#f4efff" },
   "한치": { position: "50% 100%", color: "#438dc5", bg: "#edf8ff" },
   "우럭": { position: "100% 100%", color: "#60789f", bg: "#eef3fa" },
+  "가자미": { position: "100% 100%", color: "#8a765f", bg: "#f7f2ea" },
 } as const;
 
 type SpeciesName = keyof typeof speciesCharacters;
