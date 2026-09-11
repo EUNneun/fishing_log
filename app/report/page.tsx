@@ -5,6 +5,7 @@ import { onAuthStateChanged, type User } from "firebase/auth";
 import { collection, getDocs } from "firebase/firestore";
 import { BarChart3, CalendarDays, Fish, MapPin, Sparkles, WalletCards, Waves } from "lucide-react";
 import { auth, db } from "@/lib/firebase";
+import { getGuestLogs } from "@/lib/guest-storage";
 
 type Log={id:string;tripDate:string;location:string;boatName:string;fee:number;species:string;rig:string;weather:string;catchCount:number;maxSize:number|null;region?:string;tide?:number;tideLabel?:string};
 type Group={name:string;count:number;trips:number;avg:number};
@@ -13,10 +14,9 @@ function groupBy(logs:Log[], key:(l:Log)=>string, value:(l:Log)=>number=l=>l.cat
 
 export default function ReportPage(){
  const [user,setUser]=useState<User|null>(null),[logs,setLogs]=useState<Log[]>([]),[loading,setLoading]=useState(true);
- useEffect(()=>onAuthStateChanged(auth,async next=>{setUser(next);if(!next){setLoading(false);return}try{const s=await getDocs(collection(db,"users",next.uid,"logs"));setLogs(s.docs.map(d=>({id:d.id,...d.data()} as Log)))}finally{setLoading(false)}}),[]);
+ useEffect(()=>onAuthStateChanged(auth,async next=>{setUser(next);if(!next){setLogs(getGuestLogs<Log>());setLoading(false);return}try{const s=await getDocs(collection(db,"users",next.uid,"logs"));setLogs(s.docs.map(d=>({id:d.id,...d.data()} as Log)))}finally{setLoading(false)}}),[]);
  const report=useMemo(()=>{const totalCatch=logs.reduce((s,l)=>s+(l.catchCount||0),0),totalFee=logs.reduce((s,l)=>s+(l.fee||0),0);const species=groupBy(logs,l=>l.species),ports=groupBy(logs,l=>l.location),weather=groupBy(logs,l=>l.weather),rigs=groupBy(logs,l=>l.rig),tides=groupBy(logs,l=>l.tideLabel||(l.tide?`${l.tide}물`:""));const monthly=new Map<string,number>();logs.forEach(l=>{const m=l.tripDate?.slice(0,7);if(m)monthly.set(m,(monthly.get(m)||0)+(l.catchCount||0))});const months=[...monthly].sort((a,b)=>a[0].localeCompare(b[0])).slice(-6);const maxMonth=Math.max(1,...months.map(x=>x[1]));const biggest=logs.filter(l=>l.maxSize).sort((a,b)=>(b.maxSize||0)-(a.maxSize||0))[0];return{totalCatch,totalFee,species,ports,weather,rigs,tides,months,maxMonth,biggest}},[logs]);
  const money=new Intl.NumberFormat("ko-KR"); const avg=logs.length?report.totalCatch/logs.length:0; const costPer=report.totalCatch?report.totalFee/report.totalCatch:0;
- if(!user&&!loading)return <Shell><Empty text="로그인 후 리포트를 확인할 수 있어요."/></Shell>;
  return <Shell>
   <header className="flex h-[76px] items-center justify-between px-[22px] pb-2 pt-[18px]"><div><p className="text-xs font-semibold text-[#8a90a0]">MY FISHING REPORT</p><h1 className="mt-1 text-[23px] font-extrabold tracking-[-.7px] text-[#2f3142]">낚시 리포트</h1></div><div className="grid size-10 place-items-center rounded-xl bg-[#edf4ff] text-[#3988f2]"><BarChart3 className="size-5"/></div></header>
   <section className="space-y-5 px-4 pb-28 pt-2">
