@@ -14,6 +14,7 @@ import { Dialog, DialogContent, DialogDescription, DialogHeader, DialogTitle } f
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { auth, db, googleProvider } from "@/lib/firebase";
 import { getGuestLogs, getGuestSettings, migrateGuestData, saveGuestSettings } from "@/lib/guest-storage";
+import { getFishingSession, startFishingSession, stopFishingSession, type FishingModeSession } from "@/lib/fishing-mode";
 
 type Log = {
   id: string;
@@ -89,6 +90,9 @@ export default function FishingLog() {
   const [calendarMonth, setCalendarMonth] = useState(new Date());
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
+  const [fishingSession, setFishingSession] = useState<FishingModeSession | null>(null);
+  const [quickStartOpen, setQuickStartOpen] = useState(false);
+  const [quickSpecies, setQuickSpecies] = useState("갑오징어");
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [holidays, setHolidays] = useState<Record<string, string>>({});
 
