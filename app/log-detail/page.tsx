@@ -1,7 +1,7 @@
 "use client";
 
-import { useEffect, useMemo, useState } from "react";
-import { ArrowLeft, Clock3, Crosshair, MapPin, Ruler, Waves } from "lucide-react";
+import { useEffect, useState } from "react";
+import { ArrowLeft, MapPin, Ruler, Waves } from "lucide-react";
 import { onAuthStateChanged, type User } from "firebase/auth";
 import { doc, getDoc } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
@@ -46,8 +46,6 @@ export default function LogDetailPage() {
     }
   }), []);
 
-  const points = useMemo(() => hits.filter(h => Number.isFinite(h.latitude) && Number.isFinite(h.longitude)), [hits]);
-
   if (loading) return <Shell><p className="pt-24 text-center text-sm text-[#8a90a0]">기록을 불러오는 중...</p></Shell>;
   if (!trip) return <Shell><p className="pt-24 text-center text-sm text-[#8a90a0]">출조기록을 찾지 못했습니다.</p></Shell>;
 
@@ -74,12 +72,9 @@ export default function LogDetailPage() {
 
       <div className="rounded-[22px] border border-[#e3e7f0] bg-white p-5">
         <div className="flex items-end justify-between">
-          <div><p className="text-xs font-semibold text-[#8a90a0]">HIT POINTS</p><h2 className="mt-1 text-lg font-extrabold text-[#2f3142]">히트 포인트</h2></div>
+          <div><p className="text-xs font-semibold text-[#8a90a0]">HIT HISTORY</p><h2 className="mt-1 text-lg font-extrabold text-[#2f3142]">히트 기록</h2></div>
           <strong className="text-sm text-[#3988f2]">{hits.length}건</strong>
         </div>
-
-        {points.length > 0 && <MiniMap points={points}/>}
-
         {hits.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-[#dce3ed] bg-[#fafbfd] px-4 py-8 text-center text-sm text-[#8a90a0]">이 출조에는 아직 HIT 기록이 없습니다.</div> :
         <div className="mt-4 space-y-3">{hits.map((hit,index)=><HitCard key={hit.id} hit={hit} index={index+1}/>)}</div>}
       </div>
@@ -101,23 +96,7 @@ function HitCard({hit,index}:{hit:HitRecord;index:number}) {
       {hit.depth ? <span className="rounded-full bg-white px-2.5 py-1 text-xs font-bold text-[#607a9e]">수심 {hit.depth}m</span>:null}
     </div>
     {hit.memo && <p className="mt-3 text-sm leading-5 text-[#7e8495]">{hit.memo}</p>}
-    {Number.isFinite(hit.latitude) && Number.isFinite(hit.longitude) && <a href={`https://www.google.com/maps?q=${hit.latitude},${hit.longitude}`} target="_blank" rel="noopener noreferrer" className="mt-3 inline-flex items-center gap-1 text-xs font-bold text-[#3988f2]"><MapPin className="size-3.5"/>지도에서 위치 열기</a>}
   </article>;
-}
-
-function MiniMap({points}:{points:HitRecord[]}) {
-  const lats=points.map(p=>p.latitude as number), lngs=points.map(p=>p.longitude as number);
-  const minLat=Math.min(...lats), maxLat=Math.max(...lats), minLng=Math.min(...lngs), maxLng=Math.max(...lngs);
-  const latSpan=Math.max(maxLat-minLat,0.0001), lngSpan=Math.max(maxLng-minLng,0.0001);
-  return <div className="relative mt-4 h-44 overflow-hidden rounded-2xl bg-[linear-gradient(135deg,#edf7ff,#f7fbff)]">
-    <div className="absolute inset-0 opacity-50 [background-image:radial-gradient(#a8c8ea_1px,transparent_1px)] [background-size:16px_16px]"/>
-    <div className="absolute left-3 top-3 flex items-center gap-1 rounded-full bg-white/90 px-2.5 py-1 text-[11px] font-bold text-[#607a9e]"><Crosshair className="size-3"/>GPS HIT MAP</div>
-    {points.map((p,i)=>{
-      const left=10+(((p.longitude as number)-minLng)/lngSpan)*80;
-      const top=85-(((p.latitude as number)-minLat)/latSpan)*70;
-      return <span key={p.id} className="absolute grid size-7 -translate-x-1/2 -translate-y-1/2 place-items-center rounded-full bg-[#ff6262] text-[10px] font-black text-white shadow" style={{left:`${left}%`,top:`${top}%`}}>{i+1}</span>;
-    })}
-  </div>;
 }
 
 function Shell({children}:{children:React.ReactNode}) {
