@@ -174,7 +174,7 @@ export default function FishingLog() {
           <div className="relative flex items-center justify-between">
             <div><p className="text-sm font-medium text-white/80">나의 출조 기록</p><h1 className="mt-1 text-2xl font-bold tracking-tight text-white">FISH LOG</h1></div>
             <div className="flex items-center gap-2">
-              {!user && <button type="button" onClick={login} className="rounded-xl bg-white/25 px-3 py-2 text-xs font-bold text-white transition hover:bg-white/35">로그인</button>}
+              {!user && <button type="button" onClick={login} className="flex h-10 min-w-[72px] shrink-0 items-center justify-center whitespace-nowrap rounded-xl bg-white/25 px-4 text-xs font-bold text-white transition hover:bg-white/35">로그인</button>}
               <button type="button" onClick={() => setSettingsOpen(true)} className="flex size-10 items-center justify-center rounded-xl bg-white/25 text-white transition hover:bg-white/35" aria-label="설정"><Settings className="size-5" /></button>
               <div className="flex size-12 items-center justify-center rounded-2xl bg-white/90 shadow-lg shadow-[#4387df]/20" aria-label={bestSpecies === "–" ? "주력 어종 없음" : `주력 어종 ${bestSpecies}`} title={bestSpecies === "–" ? "주력 어종 없음" : `주력 어종: ${bestSpecies}`}>
                 {bestSpecies === "–" ? <Waves className="size-6 text-[#74a9e8]" /> : <SpeciesBadge species={bestSpecies} compact />}
@@ -209,7 +209,7 @@ export default function FishingLog() {
             <div className="mt-4">
               {selectedDate ? <><div className="mb-3 flex items-center justify-between"><h2 className="font-bold text-[#29456f]">{selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 기록</h2><span className="text-sm text-[#8298b8]">{selectedLogs.length}건</span></div>{selectedLogs.length ? <LogCards logs={selectedLogs} money={money} /> : <div className="rounded-2xl border border-dashed border-[#bdd6f4] bg-white p-6 text-center text-sm text-[#8298b8]">이날은 아직 출조 기록이 없어요.</div>}</> : <div className="rounded-2xl bg-[#eaf4ff] px-4 py-3 text-center text-sm text-[#6e8caf]">캐릭터가 있는 날짜를 누르면 출조 기록을 볼 수 있어요.</div>}
             </div>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">{speciesNames.map((name) => <SpeciesBadge key={name} species={name} showName />)}</div>
+            <div className="mt-4 flex flex-wrap justify-center gap-2">{speciesNames.map((name) => <SpeciesBadge key={name} species={name} showName />)}<a href="https://open.kakao.com/o/sbFiV0Mi" target="_blank" rel="noopener noreferrer" aria-label="카카오톡 오픈채팅으로 어종 추가 요청" className="inline-flex items-center justify-center gap-1 rounded-full border border-dashed border-[#9fc8f5] bg-white px-3 py-1 text-xs font-bold text-[#5f89bb] transition active:scale-95"><Plus className="size-3.5" />어종 추가 요청</a></div>
             <p className="mt-3 text-center text-xs text-[#8aa0be]">★ 선호 물때 · {settings.region} 기준</p>
           </TabsContent>
           <TabsContent value="list">
