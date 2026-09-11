@@ -18,6 +18,7 @@ export type HitRecord = {
   caughtAt: string;
   rig?: string;
   bait?: string;
+  baits?: string[];
   depth?: number | null;
   size?: number | null;
   memo?: string;
