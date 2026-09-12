@@ -34,14 +34,14 @@ type Log = {
 };
 
 const speciesCharacters = {
-  "꽃게": { image: "/fishing_log/species-crab.svg", color: "#368bd0", bg: "#edf7ff" },
-  "참돔": { image: "/fishing_log/species-seabream.svg", color: "#dd6680", bg: "#fff0f3" },
-  "쭈꾸미": { image: "/fishing_log/species-webfoot.svg", color: "#e3675f", bg: "#fff1ed" },
-  "갑오징어": { image: "/fishing_log/species-cuttlefish.svg", color: "#8865c9", bg: "#f4efff" },
-  "한치": { image: "/fishing_log/species-squid.svg", color: "#438dc5", bg: "#edf8ff" },
-  "우럭": { image: "/fishing_log/species-rockfish.svg", color: "#60789f", bg: "#eef3fa" },
-  "가자미": { image: "/fishing_log/species-flounder.svg", color: "#8a765f", bg: "#f7f2ea" },
-  "문어": { image: "/fishing_log/species-octopus.svg", color: "#b86d75", bg: "#fff0f2" },
+  "꽃게": { image: "/fishing_log/species-icons/crab.svg", color: "#368bd0", bg: "#edf7ff" },
+  "참돔": { image: "/fishing_log/species-icons/seabream.svg", color: "#dd6680", bg: "#fff0f3" },
+  "쭈꾸미": { image: "/fishing_log/species-icons/webfoot.svg", color: "#e3675f", bg: "#fff1ed" },
+  "갑오징어": { image: "/fishing_log/species-icons/cuttlefish.svg", color: "#8865c9", bg: "#f4efff" },
+  "한치": { image: "/fishing_log/species-icons/squid.svg", color: "#438dc5", bg: "#edf8ff" },
+  "우럭": { image: "/fishing_log/species-icons/rockfish.svg", color: "#60789f", bg: "#eef3fa" },
+  "가자미": { image: "/fishing_log/species-icons/flounder.svg", color: "#8a765f", bg: "#f7f2ea" },
+  "문어": { image: "/fishing_log/species-icons/octopus.svg", color: "#b86d75", bg: "#fff0f2" },
 } as const;
 
 type SpeciesName = keyof typeof speciesCharacters;
