@@ -22,6 +22,7 @@ type Trip = {
   memo?: string;
   tideLabel?: string;
 };
+const todayKey = () => { const date = new Date(); return `${date.getFullYear()}-${String(date.getMonth()+1).padStart(2,"0")}-${String(date.getDate()).padStart(2,"0")}`; };
 
 export default function LogDetailPage() {
   const [user,setUser]=useState<User|null>(null);
@@ -73,22 +74,23 @@ export default function LogDetailPage() {
 
   if (loading) return <Shell><p className="pt-24 text-center text-sm text-[#8a90a0]">기록을 불러오는 중...</p></Shell>;
   if (!trip) return <Shell><p className="pt-24 text-center text-sm text-[#8a90a0]">출조기록을 찾지 못했습니다.</p></Shell>;
+  const upcoming = trip.tripDate > todayKey();
 
   return <Shell>
     <header className="sticky top-0 z-30 flex items-center gap-3 border-b border-[#e5e8ef] bg-[#f7f8fc]/95 px-4 py-4 backdrop-blur">
       <button type="button" onClick={()=>history.back()} className="grid size-10 place-items-center rounded-full bg-white text-[#607a9e] shadow-sm"><ArrowLeft className="size-5"/></button>
-      <div><p className="text-xs font-semibold text-[#8a90a0]">TRIP DETAIL</p><h1 className="text-xl font-extrabold text-[#2f3142]">출조 상세</h1></div>
+      <div><p className="text-xs font-semibold text-[#8a90a0]">TRIP DETAIL</p><h1 className="text-xl font-extrabold text-[#2f3142]">{upcoming ? "출조 예정" : "출조 상세"}</h1></div>
     </header>
 
     <section className="space-y-4 px-4 pb-28 pt-4">
       <div className="rounded-[22px] border border-[#e3e7f0] bg-white p-5">
         <div className="flex items-start justify-between gap-3">
-          <div><p className="text-xs text-[#8a90a0]">{trip.tripDate}</p><h2 className="mt-1 text-2xl font-black text-[#2f3142]">{trip.species} <span className="text-[#3988f2]">{trip.catchCount}마리</span></h2></div>
+          <div><p className="text-xs text-[#8a90a0]">{trip.tripDate}</p><h2 className="mt-1 text-2xl font-black text-[#2f3142]">{trip.species} {upcoming ? <span className="rounded-full bg-[#e8f3ff] px-2.5 py-1 text-sm text-[#3988f2]">예정</span> : <span className="text-[#3988f2]">{trip.catchCount}마리</span>}</h2></div>
           {trip.tideLabel && <span className="rounded-full bg-[#eef4fc] px-3 py-1.5 text-xs font-bold text-[#607a9e]">{trip.tideLabel}</span>}
         </div>
         <div className="mt-4 grid grid-cols-2 gap-3 text-sm text-[#687086]">
           <span className="flex items-center gap-2"><MapPin className="size-4 text-[#74a9e8]"/>{trip.location}</span>
-          <span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]"/>{trip.weather || "날씨 미기록"}</span>
+          <span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]"/>{upcoming ? "결과는 출조 후 입력" : trip.weather || "날씨 미기록"}</span>
           <span>{trip.boatName || "선사 미기록"}</span>
           <span>{trip.rig || "채비 미기록"}</span>
         </div>
@@ -103,14 +105,14 @@ export default function LogDetailPage() {
         </div>
       </div>
 
-      <div className="rounded-[22px] border border-[#e3e7f0] bg-white p-5">
+      {!upcoming && <div className="rounded-[22px] border border-[#e3e7f0] bg-white p-5">
         <div className="flex items-end justify-between">
           <div><p className="text-xs font-semibold text-[#8a90a0]">HIT HISTORY</p><h2 className="mt-1 text-lg font-extrabold text-[#2f3142]">히트 기록</h2></div>
           <strong className="text-sm text-[#3988f2]">{hits.length}건</strong>
         </div>
         {hits.length === 0 ? <div className="mt-4 rounded-2xl border border-dashed border-[#dce3ed] bg-[#fafbfd] px-4 py-8 text-center text-sm text-[#8a90a0]">이 출조에는 아직 HIT 기록이 없습니다.</div> :
         <div className="mt-4 space-y-3">{hits.map((hit,index)=><HitCard key={hit.id} hit={hit} index={index+1}/>)}</div>}
-      </div>
+      </div>}
     </section>
   </Shell>;
 }

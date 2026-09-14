@@ -116,8 +116,10 @@ export default function RecordPage() {
     const params = new URLSearchParams(window.location.search);
     const date = params.get("date");
     const id = params.get("id");
-    if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) setForm((current) => ({ ...current, tripDate: date }));
-    if (id) setEditId(id);
+    if ((date && /^\d{4}-\d{2}-\d{2}$/.test(date)) || id) queueMicrotask(() => {
+      if (date && /^\d{4}-\d{2}-\d{2}$/.test(date)) setForm((current) => ({ ...current, tripDate: date, weather: date > today() ? "미정" : current.weather }));
+      if (id) setEditId(id);
+    });
 
     return onAuthStateChanged(auth, async (nextUser) => {
       setUser(nextUser); setAuthReady(true);
@@ -158,9 +160,15 @@ export default function RecordPage() {
     if (!q) return ports.slice(0, 10);
     return ports.filter((p) => `${p.name} ${p.area} ${(p.aliases ?? []).join(" ")}`.toLowerCase().includes(q)).slice(0, 12);
   }, [form.location]);
+  const isFutureTrip = form.tripDate > today();
 
   function updateDate(value: string) {
-    setForm((current) => ({ ...current, tripDate: value, tide: current.region ? String(tideNumber(value, current.region)) : "" }));
+    setForm((current) => ({
+      ...current,
+      tripDate: value,
+      weather: value > today() ? "미정" : current.weather === "미정" ? "맑음" : current.weather,
+      tide: current.region ? String(tideNumber(value, current.region)) : "",
+    }));
   }
   function updateLocation(value: string) {
     const exact = ports.find((p) => p.name === value || p.aliases?.includes(value));
@@ -184,11 +192,12 @@ export default function RecordPage() {
     if (!form.region || !form.tide) { setError("검색에 없는 항구라면 지역을 직접 선택해주세요."); return; }
     setSaving(true); setError("");
     const payload = {
-      tripDate: form.tripDate, weather: form.weather, location: form.location.trim(), region: form.region,
+      tripDate: form.tripDate, weather: isFutureTrip ? "미정" : form.weather, location: form.location.trim(), region: form.region,
       tide: Number(form.tide), tideLabel: tideLabel(Number(form.tide)), boatName: form.boatName.trim(), fee: Number(form.fee),
-      species: form.species, rig: form.rig.trim(), catchCount: Number(form.catchCount), maxSize: form.maxSize ? Number(form.maxSize) : null,
-      memo: form.memo.trim(), boatCondition: form.boatCondition ? Number(form.boatCondition) : null,
-      captainSkill: form.captainSkill ? Number(form.captainSkill) : null, mealRating: form.mealRating ? Number(form.mealRating) : null,
+      species: form.species, rig: form.rig.trim(), catchCount: isFutureTrip ? 0 : Number(form.catchCount), maxSize: !isFutureTrip && form.maxSize ? Number(form.maxSize) : null,
+      memo: form.memo.trim(), boatCondition: !isFutureTrip && form.boatCondition ? Number(form.boatCondition) : null,
+      captainSkill: !isFutureTrip && form.captainSkill ? Number(form.captainSkill) : null, mealRating: !isFutureTrip && form.mealRating ? Number(form.mealRating) : null,
+      planned: isFutureTrip,
       updatedAt: serverTimestamp(),
     };
     try {
@@ -204,7 +213,7 @@ export default function RecordPage() {
         savedId = editId || createGuestId();
         saveGuestLog({ id: savedId, ...payload, createdAt: new Date().toISOString() });
       }
-      if (startModeAfterSave) {
+      if (!isFutureTrip && startModeAfterSave) {
         startFishingSession({ tripId: savedId, species: form.species || "기타", location: form.location.trim(), quickStart: false });
       }
       window.location.href = "/fishing_log/";
@@ -218,14 +227,15 @@ export default function RecordPage() {
       <div className="mx-auto min-h-dvh max-w-md bg-[#f7fbff] pb-10 shadow-2xl shadow-[#4a8ee8]/15 md:my-6 md:min-h-[calc(100dvh-3rem)] md:rounded-[2rem]">
         <header className="sticky top-0 z-20 flex items-center gap-3 border-b border-[#dbe9fa] bg-[#f7fbff]/95 px-5 pb-4 pt-[max(1rem,env(safe-area-inset-top))] backdrop-blur">
           <button type="button" onClick={() => history.back()} className="flex size-10 shrink-0 items-center justify-center rounded-full bg-white text-[#52749b] shadow-sm" aria-label="뒤로가기"><ArrowLeft className="size-5" /></button>
-          <div><h1 className="text-xl font-extrabold text-[#29456f]">{editId ? "출조 기록 편집" : "출조 기록"}</h1><p className="mt-0.5 text-xs text-[#8aa0be]">{editId ? "기존 기록을 수정하고 저장할 수 있어요." : "항구를 선택하면 지역과 물때가 자동으로 입력됩니다."}</p></div>
+          <div><h1 className="text-xl font-extrabold text-[#29456f]">{isFutureTrip ? "출조 예정" : editId ? "출조 기록 편집" : "출조 기록"}</h1><p className="mt-0.5 text-xs text-[#8aa0be]">{isFutureTrip ? "일정만 먼저 저장하고 출조 후 결과를 입력하세요." : editId ? "기존 기록을 수정하고 저장할 수 있어요." : "항구를 선택하면 지역과 물때가 자동으로 입력됩니다."}</p></div>
         </header>
 
         <form onSubmit={submit} className="space-y-5 px-5 py-5">
           {error && <div className="rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>}
           <section className="space-y-4 rounded-[1.5rem] border border-[#dfeafa] bg-white p-4 shadow-sm">
             <Field label="출조일"><Input type="date" required value={form.tripDate} onChange={(e) => updateDate(e.target.value)} className="block w-full max-w-full min-w-0 box-border" /></Field>
-            <Field label="날씨"><NativeSelect required value={form.weather} onChange={set("weather")} className="w-full"><NativeSelectOption>맑음</NativeSelectOption><NativeSelectOption>흐림</NativeSelectOption><NativeSelectOption>비</NativeSelectOption><NativeSelectOption>바람</NativeSelectOption><NativeSelectOption>눈</NativeSelectOption></NativeSelect></Field>
+            {isFutureTrip && <div className="rounded-xl bg-[#eaf4ff] px-4 py-3 text-xs font-semibold leading-5 text-[#547da9]">미래 일정은 조과와 선사 평가를 입력하지 않아도 저장됩니다. 출조 후 이 기록을 수정해 결과를 남길 수 있어요.</div>}
+            {!isFutureTrip && <Field label="날씨"><NativeSelect required value={form.weather} onChange={set("weather")} className="w-full"><NativeSelectOption>맑음</NativeSelectOption><NativeSelectOption>흐림</NativeSelectOption><NativeSelectOption>비</NativeSelectOption><NativeSelectOption>바람</NativeSelectOption><NativeSelectOption>눈</NativeSelectOption><NativeSelectOption>미정</NativeSelectOption></NativeSelect></Field>}
 
             <Field label="장소(항구)">
               <div className="relative">
@@ -247,17 +257,16 @@ export default function RecordPage() {
             <Field label="선비"><Input type="number" min="0" required inputMode="numeric" placeholder="원 단위" value={form.fee} onChange={set("fee")} /></Field>
             <Field label="어종"><NativeSelect required value={form.species} onChange={set("species")} className="w-full"><NativeSelectOption value="">선택</NativeSelectOption>{speciesNames.map((name) => <NativeSelectOption key={name} value={name}>{name}</NativeSelectOption>)}</NativeSelect></Field>
             <Field label="채비 (선택)"><Input placeholder="예: 가지채비" value={form.rig} onChange={set("rig")} /></Field>
-            <Field label="조과(마릿수)"><Input type="number" min="0" required inputMode="numeric" placeholder="0" value={form.catchCount} onChange={set("catchCount")} /></Field>
-            <Field label="최대 크기(cm)"><Input type="number" min="0" step="0.1" inputMode="decimal" placeholder="선택" value={form.maxSize} onChange={set("maxSize")} /></Field>
+            {!isFutureTrip && <><Field label="조과(마릿수)"><Input type="number" min="0" required inputMode="numeric" placeholder="0" value={form.catchCount} onChange={set("catchCount")} /></Field><Field label="최대 크기(cm)"><Input type="number" min="0" step="0.1" inputMode="decimal" placeholder="선택" value={form.maxSize} onChange={set("maxSize")} /></Field></>}
           </section>
 
-          <section className="rounded-[1.5rem] border border-[#dfeafa] bg-white p-4 shadow-sm"><div className="mb-4"><p className="text-sm font-extrabold text-[#496789]">선사 컨디션</p><p className="mt-1 text-xs text-[#8aa0be]">선택 평가 · 별 5개 만점</p></div><div className="space-y-4"><StarRating label="배 컨디션" value={Number(form.boatCondition) || 0} onChange={setRating("boatCondition")} /><StarRating label="선장님 조타 실력" value={Number(form.captainSkill) || 0} onChange={setRating("captainSkill")} /><StarRating label="간식/식사" value={Number(form.mealRating) || 0} onChange={setRating("mealRating")} /></div></section>
-          <section className="rounded-[1.5rem] border border-[#dfeafa] bg-white p-4 shadow-sm"><Field label="메모 (선택)"><Textarea placeholder="잘 잡힌 시간, 수심, 특이사항 등" value={form.memo} onChange={set("memo")} className="min-h-24" /></Field></section>
-          <label className="flex cursor-pointer items-center justify-between rounded-[1.25rem] border border-[#dbe9fa] bg-[#eef7ff] px-4 py-4">
+          {!isFutureTrip && <section className="rounded-[1.5rem] border border-[#dfeafa] bg-white p-4 shadow-sm"><div className="mb-4"><p className="text-sm font-extrabold text-[#496789]">선사 컨디션</p><p className="mt-1 text-xs text-[#8aa0be]">선택 평가 · 별 5개 만점</p></div><div className="space-y-4"><StarRating label="배 컨디션" value={Number(form.boatCondition) || 0} onChange={setRating("boatCondition")} /><StarRating label="선장님 조타 실력" value={Number(form.captainSkill) || 0} onChange={setRating("captainSkill")} /><StarRating label="간식/식사" value={Number(form.mealRating) || 0} onChange={setRating("mealRating")} /></div></section>}
+          <section className="rounded-[1.5rem] border border-[#dfeafa] bg-white p-4 shadow-sm"><Field label="메모 (선택)"><Textarea placeholder={isFutureTrip ? "준비물, 집결 시간 등" : "잘 잡힌 시간, 수심, 특이사항 등"} value={form.memo} onChange={set("memo")} className="min-h-24" /></Field></section>
+          {!isFutureTrip && <label className="flex cursor-pointer items-center justify-between rounded-[1.25rem] border border-[#dbe9fa] bg-[#eef7ff] px-4 py-4">
             <div><p className="text-sm font-extrabold text-[#315b89]">저장 후 낚시모드 시작</p><p className="mt-1 text-xs text-[#8aa3c2]">이 출조기록과 히트 포인트를 연결합니다.</p></div>
             <input type="checkbox" checked={startModeAfterSave} onChange={(e) => setStartModeAfterSave(e.target.checked)} className="size-5 accent-[#4f97ee]" />
-          </label>
-          <Button disabled={saving} type="submit" className="h-13 w-full rounded-2xl bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] font-extrabold text-white shadow-lg shadow-[#4d94e8]/20 hover:from-[#4f8ee8] hover:to-[#4db7ea]">{saving ? "저장 중..." : editId ? "수정사항 저장" : "기록 저장"}</Button>
+          </label>}
+          <Button disabled={saving} type="submit" className="h-13 w-full rounded-2xl bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] font-extrabold text-white shadow-lg shadow-[#4d94e8]/20 hover:from-[#4f8ee8] hover:to-[#4db7ea]">{saving ? "저장 중..." : isFutureTrip ? "출조 예정 저장" : editId ? "수정사항 저장" : "기록 저장"}</Button>
         </form>
       </div>
     </main>

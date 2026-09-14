@@ -31,6 +31,7 @@ type Log = {
   boatCondition?: number | null;
   captainSkill?: number | null;
   mealRating?: number | null;
+  planned?: boolean;
 };
 
 type CalendarView = "point" | "species" | "catch";
@@ -63,6 +64,10 @@ function normalizeTripDate(value: unknown) {
 
 function normalizeLog(log: Log) {
   return { ...log, tripDate: normalizeTripDate(log.tripDate) };
+}
+
+function isFutureLog(log: Log) {
+  return log.tripDate > dateKey(new Date());
 }
 
 function pointLabel(location: string) {
@@ -378,13 +383,14 @@ function CalendarViewButton({ active, color, onClick, children }: { active: bool
 }
 
 function CalendarMarker({ view, log, catchTotal }: { view: CalendarView; log: Log; catchTotal: number }) {
+  const upcoming = isFutureLog(log);
   if (view === "point") {
-    return <span className="flex h-10 max-w-full items-center gap-0.5 rounded-full bg-[#e8f4ff] px-2 text-[10px] font-black text-[#318dd0] opacity-100 shadow-sm"><span className="max-w-[2.3rem] truncate">{pointLabel(log.location)}</span>{catchTotal > 0 && <small className="text-[8px] font-bold text-[#7395b5]">+{catchTotal}</small>}</span>;
+    return <span className="flex h-10 max-w-full items-center gap-0.5 rounded-full bg-[#e8f4ff] px-2 text-[10px] font-black text-[#318dd0] opacity-100 shadow-sm"><span className="max-w-[2.3rem] truncate">{pointLabel(log.location)}</span>{upcoming ? <small className="text-[8px] font-black text-[#497bab]">예정</small> : catchTotal > 0 && <small className="text-[8px] font-bold text-[#7395b5]">+{catchTotal}</small>}</span>;
   }
   if (view === "catch") {
-    return <span className="grid size-10 place-items-center rounded-full bg-[#ff6068] text-xs font-black text-white opacity-100 shadow-sm">{catchTotal}</span>;
+    return upcoming ? <span className="grid size-10 place-items-center rounded-full bg-[#5e9bf2] text-[9px] font-black text-white opacity-100 shadow-sm">예정</span> : <span className="grid size-10 place-items-center rounded-full bg-[#ff6068] text-xs font-black text-white opacity-100 shadow-sm">{catchTotal}</span>;
   }
-  return <span className="relative flex h-10 items-center justify-center opacity-100"><SpeciesBadge species={log.species} compact calendar />{catchTotal > 0 && <small className="absolute -bottom-0.5 -right-2 rounded-full bg-white/95 px-1 text-[8px] font-black text-[#697f9b] shadow-sm">+{catchTotal}</small>}</span>;
+  return <span className="relative flex h-10 items-center justify-center opacity-100"><SpeciesBadge species={log.species} compact calendar />{upcoming ? <small className="absolute -bottom-0.5 -right-2 rounded-full bg-[#5e9bf2] px-1.5 text-[8px] font-black text-white shadow-sm">예정</small> : catchTotal > 0 && <small className="absolute -bottom-0.5 -right-2 rounded-full bg-white/95 px-1 text-[8px] font-black text-[#697f9b] shadow-sm">+{catchTotal}</small>}</span>;
 }
 
 function RatingSummary({ label, value }: { label: string; value?: number | null }) {
@@ -401,9 +407,10 @@ function SpeciesBadge({ species, compact = false, showName = false, calendar = f
 function LogCards({ logs, money }: { logs: Log[]; money: Intl.NumberFormat }) {
   return <div className="space-y-3">{logs.map((log) => {
     const hasRatings = Boolean(log.boatCondition || log.captainSkill || log.mealRating);
+    const upcoming = isFutureLog(log);
     return <article key={log.id} className="rounded-[1.35rem] border border-[#e2edfb] bg-white p-4 shadow-sm shadow-[#5594df]/5">
-      <div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2 text-xs text-[#8298b8]"><CalendarDays className="size-3.5" />{log.tripDate}</div><h3 className="mt-2 flex items-center gap-2 text-lg font-bold text-[#29456f]"><SpeciesBadge species={log.species} />{log.species} <span className="text-[#3988f2]">{log.catchCount}마리</span></h3></div>{log.maxSize && <span className="rounded-full bg-[#e8f3ff] px-3 py-1 text-sm font-bold text-[#3988f2]">최대 {log.maxSize}cm</span>}</div>
-      <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-[#607a9e]"><span className="flex items-center gap-2"><MapPin className="size-4 text-[#74a9e8]" />{log.location}</span><span className="flex items-center gap-2"><ShipWheel className="size-4 text-[#74a9e8]" />{log.boatName}</span><span className="flex items-center gap-2"><WalletCards className="size-4 text-[#74a9e8]" />{money.format(log.fee)}원</span><span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]" />{log.weather}{log.rig ? ` · ${log.rig}` : ""}</span></div>
+      <div className="flex items-start justify-between gap-3"><div><div className="flex items-center gap-2 text-xs text-[#8298b8]"><CalendarDays className="size-3.5" />{log.tripDate}</div><h3 className="mt-2 flex items-center gap-2 text-lg font-bold text-[#29456f]"><SpeciesBadge species={log.species} />{log.species} {upcoming ? <span className="rounded-full bg-[#e8f3ff] px-2 py-1 text-xs font-extrabold text-[#3988f2]">출조 예정</span> : <span className="text-[#3988f2]">{log.catchCount}마리</span>}</h3></div>{!upcoming && log.maxSize && <span className="rounded-full bg-[#e8f3ff] px-3 py-1 text-sm font-bold text-[#3988f2]">최대 {log.maxSize}cm</span>}</div>
+      <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-[#607a9e]"><span className="flex items-center gap-2"><MapPin className="size-4 text-[#74a9e8]" />{log.location}</span><span className="flex items-center gap-2"><ShipWheel className="size-4 text-[#74a9e8]" />{log.boatName}</span><span className="flex items-center gap-2"><WalletCards className="size-4 text-[#74a9e8]" />{money.format(log.fee)}원</span><span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]" />{upcoming ? (log.rig || "일정 등록") : `${log.weather}${log.rig ? ` · ${log.rig}` : ""}`}</span></div>
       {hasRatings && <div className="mt-3 rounded-xl bg-[#f6faff] px-3 py-2.5 text-xs text-[#6f87a5]"><p className="mb-2 font-bold text-[#496789]">선사 컨디션</p><div className="space-y-1.5"><RatingSummary label="배 컨디션" value={log.boatCondition} /><RatingSummary label="선장님 조타 실력" value={log.captainSkill} /><RatingSummary label="간식/식사" value={log.mealRating} /></div></div>}
       {log.memo && <p className="mt-3 border-t border-[#e6effb] pt-3 text-sm leading-6 text-[#7c91ad]">{log.memo}</p>}
     </article>;
