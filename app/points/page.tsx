@@ -27,6 +27,21 @@ declare global {
 type SelectedPoint = HitRecord | null;
 type MappableHit = HitRecord & { latitude: number; longitude: number };
 
+const speciesMarkerIcons: Record<string, string> = {
+  "꽃게": "crab.svg",
+  "참돔": "seabream.svg",
+  "쭈꾸미": "webfoot.svg",
+  "갑오징어": "cuttlefish.svg",
+  "문어": "octopus.svg",
+  "한치": "squid.svg",
+  "우럭": "rockfish.svg",
+  "가자미": "flounder.svg",
+};
+
+function speciesMarkerPath(species: string) {
+  return `/fishing_log/species-icons/${speciesMarkerIcons[species] ?? "rockfish.svg"}`;
+}
+
 function normalizePoints(hits: HitRecord[]): MappableHit[] {
   return hits.flatMap((hit) => {
     const latitude = Number(hit.latitude);
@@ -89,15 +104,16 @@ export default function PointsPage() {
       if (currentHits.length) {
         const bounds: LatLng[] = [];
         const seenPositions = new Map<string, number>();
-        currentHits.forEach((hit, index) => {
+        currentHits.forEach((hit) => {
           const [lat, lng] = spreadMarkerPosition(hit, seenPositions);
           bounds.push([lat,lng]);
+          const markerImage = speciesMarkerPath(hit.species);
 
           const icon = L.divIcon({
             className: "",
-            html: `<div style="width:34px;height:34px;border-radius:50%;background:#18b96b;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.22);display:grid;place-items:center;color:white;font-size:13px;font-weight:900">${index + 1}</div>`,
-            iconSize:[34,34],
-            iconAnchor:[17,17]
+            html: `<div style="width:44px;height:44px;border-radius:50%;background:#f2f8ff;border:3px solid white;box-shadow:0 3px 10px rgba(27,65,105,.28);display:grid;place-items:center;overflow:hidden"><img src="${markerImage}" alt="" style="display:block;width:40px;height:40px;object-fit:contain" /></div>`,
+            iconSize:[44,44],
+            iconAnchor:[22,22]
           });
 
           const marker = L.marker([lat,lng],{icon}).addTo(map);
