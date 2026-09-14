@@ -301,7 +301,7 @@ export default function FishingLog() {
                 const preferred = preferredTides.has(tide);
                 const dateColor = holiday || day === 0 ? "text-[#e45f72]" : day === 6 ? "text-[#438fd7]" : "text-[#536f93]";
                 return <CalendarDayButton {...props} className="min-w-0 gap-0.5 rounded-xl px-0.5 py-1 hover:bg-[#eef6ff] data-[selected-single=true]:bg-[#dceeff] data-[selected-single=true]:text-[#29456f]" title={holiday || undefined}>
-                  <span className={`text-xs font-semibold ${dateColor}`}>{props.day.date.getDate()}</span>
+                  {!firstLog && <span className={`text-xs font-semibold ${dateColor}`}>{props.day.date.getDate()}</span>}
                   {firstLog ? <CalendarMarker view={calendarView} log={firstLog} catchTotal={catchTotal} /> : <span className="h-7" />}
                   <span className={preferred ? "rounded-full bg-[#fff1b8] px-1 text-[9px] font-extrabold text-[#b17800]" : "text-[9px] text-[#9aacc3]"}>{preferred ? "★ " : ""}{tideLabel(tide)}</span>
                 </CalendarDayButton>;
@@ -374,12 +374,12 @@ function CalendarViewButton({ active, color, onClick, children }: { active: bool
 
 function CalendarMarker({ view, log, catchTotal }: { view: CalendarView; log: Log; catchTotal: number }) {
   if (view === "point") {
-    return <span className="flex h-7 max-w-full items-center gap-0.5 rounded-full bg-[#e8f4ff] px-1.5 text-[9px] font-black text-[#318dd0] opacity-100"><span className="max-w-[2.2rem] truncate">{pointLabel(log.location)}</span>{catchTotal > 0 && <small className="text-[8px] font-bold text-[#7395b5]">+{catchTotal}</small>}</span>;
+    return <span className="flex h-10 max-w-full items-center gap-0.5 rounded-full bg-[#e8f4ff] px-2 text-[10px] font-black text-[#318dd0] opacity-100 shadow-sm"><span className="max-w-[2.3rem] truncate">{pointLabel(log.location)}</span>{catchTotal > 0 && <small className="text-[8px] font-bold text-[#7395b5]">+{catchTotal}</small>}</span>;
   }
   if (view === "catch") {
-    return <span className="grid size-7 place-items-center rounded-full bg-[#ff6068] text-[10px] font-black text-white opacity-100 shadow-sm">{catchTotal}</span>;
+    return <span className="grid size-10 place-items-center rounded-full bg-[#ff6068] text-xs font-black text-white opacity-100 shadow-sm">{catchTotal}</span>;
   }
-  return <span className="relative flex h-7 items-center justify-center opacity-100"><SpeciesBadge species={log.species} compact />{catchTotal > 0 && <small className="absolute -bottom-1 -right-2 rounded-full bg-white/95 px-1 text-[8px] font-black text-[#697f9b] shadow-sm">+{catchTotal}</small>}</span>;
+  return <span className="relative flex h-10 items-center justify-center opacity-100"><SpeciesBadge species={log.species} compact calendar />{catchTotal > 0 && <small className="absolute -bottom-0.5 -right-2 rounded-full bg-white/95 px-1 text-[8px] font-black text-[#697f9b] shadow-sm">+{catchTotal}</small>}</span>;
 }
 
 function RatingSummary({ label, value }: { label: string; value?: number | null }) {
@@ -387,9 +387,10 @@ function RatingSummary({ label, value }: { label: string; value?: number | null 
   return <div className="flex items-center justify-between gap-2"><span>{label}</span><span className="flex items-center gap-0.5" aria-label={`${label} ${value}점`}>{[1, 2, 3, 4, 5].map((score) => <Star key={score} className={`size-3.5 ${score <= value ? "text-[#f5b83d]" : "text-[#d7e2ef]"}`} fill={score <= value ? "currentColor" : "none"} />)}</span></div>;
 }
 
-function SpeciesBadge({ species, compact = false, showName = false }: { species: string; compact?: boolean; showName?: boolean }) {
+function SpeciesBadge({ species, compact = false, showName = false, calendar = false }: { species: string; compact?: boolean; showName?: boolean; calendar?: boolean }) {
   const character = speciesCharacters[species as SpeciesName] || speciesCharacters["우럭"];
-  return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? "size-6 rounded-full ring-2 ring-white" : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}><span aria-hidden className={compact ? "size-6 shrink-0" : "size-7 shrink-0"} style={{ backgroundImage: `url('${character.image}')`, backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundSize: "contain" }} />{showName && <span>{species}</span>}</span>;
+  const compactSize = calendar ? "size-10" : "size-6";
+  return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? `${compactSize} rounded-full ring-2 ring-white` : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}><span aria-hidden className={compact ? `${compactSize} shrink-0` : "size-7 shrink-0"} style={{ backgroundImage: `url('${character.image}')`, backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundSize: "contain" }} />{showName && <span>{species}</span>}</span>;
 }
 
 function LogCards({ logs, money }: { logs: Log[]; money: Intl.NumberFormat }) {
