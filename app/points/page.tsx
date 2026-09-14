@@ -4,23 +4,64 @@ import { useEffect, useMemo, useRef, useState } from "react";
 import { MapPin, Navigation, X } from "lucide-react";
 import { getHitRecords, type HitRecord } from "@/lib/fishing-mode";
 
+type LatLng = [number, number];
+type LeafletMap = {
+  setView: (center: LatLng, zoom: number) => LeafletMap;
+  fitBounds: (bounds: LatLng[], options: { padding: LatLng; maxZoom: number }) => void;
+  invalidateSize: () => void;
+  remove: () => void;
+};
+type LeafletMarker = { on: (event: string, handler: () => void) => void };
+type LeafletApi = {
+  map: (element: HTMLDivElement, options: Record<string, unknown>) => LeafletMap;
+  tileLayer: (url: string, options: Record<string, unknown>) => { addTo: (map: LeafletMap) => void };
+  control: { zoom: (options: Record<string, unknown>) => { addTo: (map: LeafletMap) => void } };
+  divIcon: (options: Record<string, unknown>) => unknown;
+  marker: (position: LatLng, options: Record<string, unknown>) => { addTo: (map: LeafletMap) => LeafletMarker };
+};
+
 declare global {
-  interface Window { L?: any; }
+  interface Window { L?: LeafletApi; }
 }
 
 type SelectedPoint = HitRecord | null;
+type MappableHit = HitRecord & { latitude: number; longitude: number };
+
+function normalizePoints(hits: HitRecord[]): MappableHit[] {
+  return hits.flatMap((hit) => {
+    const latitude = Number(hit.latitude);
+    const longitude = Number(hit.longitude);
+    if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return [];
+    return [{ ...hit, latitude, longitude }];
+  });
+}
+
+function spreadMarkerPosition(hit: MappableHit, seen: Map<string, number>) {
+  const key = `${hit.latitude.toFixed(5)},${hit.longitude.toFixed(5)}`;
+  const overlapIndex = seen.get(key) ?? 0;
+  seen.set(key, overlapIndex + 1);
+  if (overlapIndex === 0) return [hit.latitude, hit.longitude] as [number, number];
+
+  const angle = ((overlapIndex - 1) % 6) * (Math.PI / 3);
+  const ring = Math.floor((overlapIndex - 1) / 6) + 1;
+  const radius = 0.00045 * ring;
+  return [
+    hit.latitude + Math.cos(angle) * radius,
+    hit.longitude + (Math.sin(angle) * radius) / Math.max(Math.cos(hit.latitude * Math.PI / 180), 0.4),
+  ] as [number, number];
+}
 
 export default function PointsPage() {
   const mapRef = useRef<HTMLDivElement>(null);
-  const mapInstance = useRef<any>(null);
+  const mapInstance = useRef<LeafletMap | null>(null);
   const [hits,setHits]=useState<HitRecord[]>([]);
   const [selected,setSelected]=useState<SelectedPoint>(null);
   const [mapError,setMapError]=useState("");
 
-  const points = useMemo(() => hits.filter(hit => Number.isFinite(hit.latitude) && Number.isFinite(hit.longitude)), [hits]);
+  const points = useMemo(() => normalizePoints(hits), [hits]);
 
   useEffect(() => {
-    setHits(getHitRecords());
+    queueMicrotask(() => setHits(getHitRecords()));
 
     const cssId = "leaflet-css";
     if (!document.getElementById(cssId)) {
@@ -44,25 +85,25 @@ export default function PointsPage() {
 
       L.control.zoom({ position:"topright" }).addTo(map);
 
-      const currentHits = getHitRecords().filter(hit => Number.isFinite(hit.latitude) && Number.isFinite(hit.longitude));
+      const currentHits = normalizePoints(getHitRecords());
       if (currentHits.length) {
-        const bounds:any[] = [];
-        currentHits.forEach((hit) => {
-          const lat = hit.latitude as number;
-          const lng = hit.longitude as number;
+        const bounds: LatLng[] = [];
+        const seenPositions = new Map<string, number>();
+        currentHits.forEach((hit, index) => {
+          const [lat, lng] = spreadMarkerPosition(hit, seenPositions);
           bounds.push([lat,lng]);
 
           const icon = L.divIcon({
             className: "",
-            html: '<div style="width:30px;height:30px;border-radius:50%;background:#18b96b;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.22);display:grid;place-items:center;color:white;font-size:15px;font-weight:900">★</div>',
-            iconSize:[30,30],
-            iconAnchor:[15,15]
+            html: `<div style="width:34px;height:34px;border-radius:50%;background:#18b96b;border:3px solid white;box-shadow:0 2px 8px rgba(0,0,0,.22);display:grid;place-items:center;color:white;font-size:13px;font-weight:900">${index + 1}</div>`,
+            iconSize:[34,34],
+            iconAnchor:[17,17]
           });
 
           const marker = L.marker([lat,lng],{icon}).addTo(map);
           marker.on("click",()=>setSelected(hit));
         });
-        map.fitBounds(bounds,{padding:[34,34],maxZoom:13});
+        map.fitBounds(bounds,{padding:[44,44],maxZoom:17});
       }
 
       setTimeout(()=>map.invalidateSize(),100);
