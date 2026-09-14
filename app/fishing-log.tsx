@@ -47,6 +47,7 @@ const speciesCharacters = {
 } as const;
 
 type SpeciesName = keyof typeof speciesCharacters;
+const speciesNames = Object.keys(speciesCharacters) as SpeciesName[];
 const regions = ["서해", "남해", "동해", "제주"] as const;
 type Region = typeof regions[number];
 type UserSettings = { region: Region; preferredTides: string };
@@ -309,6 +310,10 @@ export default function FishingLog() {
             </div>
             <div className="mt-4">
               {selectedDate ? <><div className="mb-3 flex items-center justify-between"><h2 className="font-bold text-[#29456f]">{selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 기록</h2><span className="text-sm text-[#8298b8]">{selectedLogs.length}건</span></div>{selectedLogs.length ? <LogCards logs={selectedLogs} money={money} /> : <div className="rounded-2xl border border-dashed border-[#bdd6f4] bg-white p-6 text-center text-sm text-[#8298b8]">이날은 아직 출조 기록이 없어요.</div>}</> : <div className="rounded-2xl bg-[#eaf4ff] px-4 py-3 text-center text-sm text-[#6e8caf]">표시가 있는 날짜를 누르면 출조 기록을 볼 수 있어요.</div>}
+            </div>
+            <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label="지원 어종">
+              {speciesNames.map((name) => <SpeciesBadge key={name} species={name} showName />)}
+              <a href="https://open.kakao.com/o/sbFiV0Mi" target="_blank" rel="noopener noreferrer" aria-label="카카오톡 오픈채팅으로 어종 추가 요청" className="inline-flex items-center justify-center gap-1 rounded-full border border-dashed border-[#9fc8f5] bg-white px-3 py-1 text-xs font-bold text-[#5f89bb] transition active:scale-95"><Plus className="size-3.5" />어종 추가 요청</a>
             </div>
             <p className="mt-3 text-center text-xs text-[#8aa0be]">빈 날짜를 누르면 바로 기록 · ★ 선호 물때 · {settings.region} 기준</p>
           </TabsContent>
