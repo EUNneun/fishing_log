@@ -33,6 +33,8 @@ type Log = {
   mealRating?: number | null;
 };
 
+type CalendarView = "point" | "species" | "catch";
+
 const speciesCharacters = {
   "꽃게": { image: "/fishing_log/species-icons/crab.svg", color: "#368bd0", bg: "#edf7ff" },
   "참돔": { image: "/fishing_log/species-icons/seabream.svg", color: "#dd6680", bg: "#fff0f3" },
@@ -45,12 +47,29 @@ const speciesCharacters = {
 } as const;
 
 type SpeciesName = keyof typeof speciesCharacters;
-const speciesNames = Object.keys(speciesCharacters) as SpeciesName[];
 const regions = ["서해", "남해", "동해", "제주"] as const;
 type Region = typeof regions[number];
 type UserSettings = { region: Region; preferredTides: string };
 const defaultSettings: UserSettings = { region: "서해", preferredTides: "3,4,5,10,11" };
 const dateKey = (date: Date) => `${date.getFullYear()}-${String(date.getMonth() + 1).padStart(2, "0")}-${String(date.getDate()).padStart(2, "0")}`;
+
+function normalizeTripDate(value: unknown) {
+  if (typeof value !== "string") return "";
+  const exact = value.match(/^(\d{4})[-./](\d{1,2})[-./](\d{1,2})/);
+  if (!exact) return value;
+  return `${exact[1]}-${exact[2].padStart(2, "0")}-${exact[3].padStart(2, "0")}`;
+}
+
+function normalizeLog(log: Log) {
+  return { ...log, tripDate: normalizeTripDate(log.tripDate) };
+}
+
+function pointLabel(location: string) {
+  const clean = location.trim();
+  if (!clean) return "포인트";
+  const first = clean.split(/\s+/)[0];
+  return (first.length <= 4 ? first : clean.replace(/항$/, "")).slice(0, 4);
+}
 
 function tideNumber(date: Date, region: Region) {
   const anchor = new Date(2026, 8, 10);
@@ -92,8 +111,7 @@ export default function FishingLog() {
   const [settingsOpen, setSettingsOpen] = useState(false);
   const [settingsSaving, setSettingsSaving] = useState(false);
   const [fishingSession, setFishingSession] = useState<FishingModeSession | null>(null);
-  const [quickStartOpen, setQuickStartOpen] = useState(false);
-  const [quickSpecies, setQuickSpecies] = useState("갑오징어");
+  const [calendarView, setCalendarView] = useState<CalendarView>("species");
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [holidays, setHolidays] = useState<Record<string, string>>({});
   const [compactHeader, setCompactHeader] = useState(false);
@@ -101,6 +119,10 @@ export default function FishingLog() {
   useEffect(() => onAuthStateChanged(auth, (nextUser) => {
     setUser(nextUser);
     setAuthReady(true);
+    if (!nextUser) {
+      stopFishingSession();
+      setFishingSession(null);
+    }
   }), []);
 
   useEffect(() => {
@@ -123,17 +145,24 @@ export default function FishingLog() {
 
   useEffect(() => {
     if (!user) {
-      setLogs(getGuestLogs<Log & { id: string }>().sort((a, b) => b.tripDate.localeCompare(a.tripDate)));
-      setSettings(getGuestSettings(defaultSettings));
-      setLoading(false);
+      const nextLogs = getGuestLogs<Log & { id: string }>().map(normalizeLog).sort((a, b) => b.tripDate.localeCompare(a.tripDate));
+      const nextSettings = getGuestSettings(defaultSettings);
+      queueMicrotask(() => {
+        setLogs(nextLogs);
+        setSettings(nextSettings);
+        alignCalendarToLatest(nextLogs, setCalendarMonth);
+        setLoading(false);
+      });
       return;
     }
-    setLoading(true);
+    queueMicrotask(() => setLoading(true));
     migrateGuestData(user).then(() => Promise.all([
       getDocs(collection(db, "users", user.uid, "logs")),
       getDoc(doc(db, "users", user.uid, "settings", "main")),
     ])).then(([logSnapshot, settingsSnapshot]) => {
-      setLogs(logSnapshot.docs.map((item) => ({ id: item.id, ...item.data() } as Log)).sort((a, b) => b.tripDate.localeCompare(a.tripDate)));
+      const nextLogs = logSnapshot.docs.map((item) => normalizeLog({ id: item.id, ...item.data() } as Log)).sort((a, b) => b.tripDate.localeCompare(a.tripDate));
+      setLogs(nextLogs);
+      alignCalendarToLatest(nextLogs, setCalendarMonth);
       if (settingsSnapshot.exists()) setSettings(settingsSnapshot.data() as UserSettings);
     }).catch((e) => setError(e instanceof Error ? e.message : "데이터를 불러오지 못했습니다."))
       .finally(() => setLoading(false));
@@ -248,23 +277,40 @@ export default function FishingLog() {
           </TabsList>
           {error && <div className="mb-3 rounded-xl bg-red-500/10 px-4 py-3 text-sm text-red-600">{error}</div>}
           <TabsContent value="calendar">
+            <div className="mb-3 flex gap-2" aria-label="캘린더 표시 기준">
+              <CalendarViewButton active={calendarView === "point"} color="#55b8f5" onClick={() => setCalendarView("point")}>포인트</CalendarViewButton>
+              <CalendarViewButton active={calendarView === "species"} color="#31c878" onClick={() => setCalendarView("species")}>어종</CalendarViewButton>
+              <CalendarViewButton active={calendarView === "catch"} color="#ff6068" onClick={() => setCalendarView("catch")}>조과</CalendarViewButton>
+            </div>
             <div className="overflow-hidden rounded-[1.5rem] border border-[#dfebfa] bg-white p-2 shadow-sm">
-              <Calendar mode="single" selected={selectedDate} onSelect={setSelectedDate} month={calendarMonth} onMonthChange={setCalendarMonth} showOutsideDays={false} className="w-full bg-white p-2 [--cell-size:3.15rem]" classNames={{ month: "w-full", month_grid: "w-full", caption_label: "text-base font-extrabold text-[#29456f]", weekday: "flex-1 text-xs font-semibold text-[#8aa0be]", day: "group/day relative h-[3.6rem] w-full p-0 text-center" }} formatters={{ formatCaption: (date) => `${date.getFullYear()}년 ${date.getMonth() + 1}월`, formatWeekdayName: (date) => ["일", "월", "화", "수", "목", "금", "토"][date.getDay()] }} components={{ DayButton: (props) => {
+              <Calendar mode="single" selected={selectedDate} onSelect={(date) => {
+                if (!date) return;
+                const key = dateKey(date);
+                if ((logsByDate[key] || []).length === 0) {
+                  window.location.href = `/fishing_log/record/?date=${key}`;
+                  return;
+                }
+                setSelectedDate(date);
+              }} month={calendarMonth} onMonthChange={(month) => { setCalendarMonth(month); setSelectedDate(undefined); }} showOutsideDays={false} className="w-full bg-white p-2 [--cell-size:3.15rem]" classNames={{ month: "w-full", month_grid: "w-full", caption_label: "text-base font-extrabold text-[#29456f]", weekday: "flex-1 text-xs font-semibold text-[#8aa0be]", day: "group/day relative h-[4.5rem] w-full p-0 text-center" }} formatters={{ formatCaption: (date) => `${date.getFullYear()}년 ${date.getMonth() + 1}월`, formatWeekdayName: (date) => ["일", "월", "화", "수", "목", "금", "토"][date.getDay()] }} components={{ DayButton: (props) => {
                 const dayLogs = logsByDate[dateKey(props.day.date)] || [];
-                const species = [...new Set(dayLogs.map((log) => log.species))].slice(0, 3);
+                const firstLog = dayLogs[0];
+                const catchTotal = dayLogs.reduce((sum, log) => sum + Number(log.catchCount || 0), 0);
                 const day = props.day.date.getDay();
                 const holiday = holidays[dateKey(props.day.date)];
                 const tide = tideNumber(props.day.date, settings.region);
                 const preferred = preferredTides.has(tide);
                 const dateColor = holiday || day === 0 ? "text-[#e45f72]" : day === 6 ? "text-[#438fd7]" : "text-[#536f93]";
-                return <CalendarDayButton {...props} className="min-w-0 rounded-xl py-1 hover:bg-[#eef6ff] data-[selected-single=true]:bg-[#dceeff] data-[selected-single=true]:text-[#29456f]" title={holiday || undefined}><span className={`text-xs font-semibold ${dateColor}`}>{props.day.date.getDate()}</span><span className={preferred ? "rounded-full bg-[#fff1b8] px-1 text-[9px] font-extrabold text-[#b17800]" : "text-[9px] text-[#9aacc3]"}>{preferred ? "★ " : ""}{tideLabel(tide)}</span><span className="flex min-h-5 items-center justify-center -space-x-1">{species.map((name) => <SpeciesBadge key={name} species={name} compact />)}</span></CalendarDayButton>;
+                return <CalendarDayButton {...props} className="min-w-0 gap-0.5 rounded-xl px-0.5 py-1 hover:bg-[#eef6ff] data-[selected-single=true]:bg-[#dceeff] data-[selected-single=true]:text-[#29456f]" title={holiday || undefined}>
+                  <span className={`text-xs font-semibold ${dateColor}`}>{props.day.date.getDate()}</span>
+                  {firstLog ? <CalendarMarker view={calendarView} log={firstLog} catchTotal={catchTotal} /> : <span className="h-7" />}
+                  <span className={preferred ? "rounded-full bg-[#fff1b8] px-1 text-[9px] font-extrabold text-[#b17800]" : "text-[9px] text-[#9aacc3]"}>{preferred ? "★ " : ""}{tideLabel(tide)}</span>
+                </CalendarDayButton>;
               } }} />
             </div>
             <div className="mt-4">
-              {selectedDate ? <><div className="mb-3 flex items-center justify-between"><h2 className="font-bold text-[#29456f]">{selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 기록</h2><span className="text-sm text-[#8298b8]">{selectedLogs.length}건</span></div>{selectedLogs.length ? <LogCards logs={selectedLogs} money={money} /> : <div className="rounded-2xl border border-dashed border-[#bdd6f4] bg-white p-6 text-center text-sm text-[#8298b8]">이날은 아직 출조 기록이 없어요.</div>}</> : <div className="rounded-2xl bg-[#eaf4ff] px-4 py-3 text-center text-sm text-[#6e8caf]">캐릭터가 있는 날짜를 누르면 출조 기록을 볼 수 있어요.</div>}
+              {selectedDate ? <><div className="mb-3 flex items-center justify-between"><h2 className="font-bold text-[#29456f]">{selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 기록</h2><span className="text-sm text-[#8298b8]">{selectedLogs.length}건</span></div>{selectedLogs.length ? <LogCards logs={selectedLogs} money={money} /> : <div className="rounded-2xl border border-dashed border-[#bdd6f4] bg-white p-6 text-center text-sm text-[#8298b8]">이날은 아직 출조 기록이 없어요.</div>}</> : <div className="rounded-2xl bg-[#eaf4ff] px-4 py-3 text-center text-sm text-[#6e8caf]">표시가 있는 날짜를 누르면 출조 기록을 볼 수 있어요.</div>}
             </div>
-            <div className="mt-4 flex flex-wrap justify-center gap-2">{speciesNames.map((name) => <SpeciesBadge key={name} species={name} showName />)}<a href="https://open.kakao.com/o/sbFiV0Mi" target="_blank" rel="noopener noreferrer" aria-label="카카오톡 오픈채팅으로 어종 추가 요청" className="inline-flex items-center justify-center gap-1 rounded-full border border-dashed border-[#9fc8f5] bg-white px-3 py-1 text-xs font-bold text-[#5f89bb] transition active:scale-95"><Plus className="size-3.5" />어종 추가 요청</a></div>
-            <p className="mt-3 text-center text-xs text-[#8aa0be]">★ 선호 물때 · {settings.region} 기준</p>
+            <p className="mt-3 text-center text-xs text-[#8aa0be]">빈 날짜를 누르면 바로 기록 · ★ 선호 물때 · {settings.region} 기준</p>
           </TabsContent>
           <TabsContent value="list">
             <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-[#29456f]">최근 출조</h2><span className="text-sm text-[#8298b8]">총 {logs.length}건</span></div>
@@ -284,30 +330,10 @@ export default function FishingLog() {
             </Button>
           </>
         ) : (
-          <Button type="button" onClick={() => {
-            if (todayLog) {
-              const session = startFishingSession({ tripId: todayLog.id, species: todayLog.species || "기타", location: todayLog.location, quickStart: false }); setFishingSession(session);
-            } else {
-              setQuickStartOpen(true);
-            }
-          }} aria-label="낚시모드 시작" className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[60] size-[4.5rem] rounded-full bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] p-0 text-white shadow-xl shadow-[#4d94e8]/30 hover:from-[#4f8ee8] hover:to-[#4db7ea]">
+          <Button type="button" onClick={openRecordPage} aria-label="출조 기록하기" className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[60] size-[4.5rem] rounded-full bg-gradient-to-r from-[#5e9bf2] to-[#61c5f3] p-0 text-white shadow-xl shadow-[#4d94e8]/30 hover:from-[#4f8ee8] hover:to-[#4db7ea]">
             <Plus className="size-8" />
           </Button>
         )}
-
-        {quickStartOpen && <div className="fixed inset-0 z-[90] flex items-end justify-center bg-black/35 p-4 sm:items-center">
-          <div className="w-full max-w-md rounded-[28px] bg-white p-5 shadow-xl">
-            <h3 className="text-lg font-black text-[#234a78]">빠르게 낚시 시작</h3>
-            <p className="mt-1 text-sm text-[#8298b8]">오늘 출조기록이 없습니다. 어종만 선택하고 바로 시작할 수 있어요.</p>
-            <NativeSelect value={quickSpecies} onChange={(e) => setQuickSpecies(e.target.value)} className="mt-5 w-full">
-              {speciesNames.map((name) => <NativeSelectOption key={name} value={name}>{name}</NativeSelectOption>)}
-            </NativeSelect>
-            <div className="mt-4 grid grid-cols-2 gap-2">
-              <Button type="button" variant="outline" onClick={() => { setQuickStartOpen(false); openRecordPage(); }}>출조기록 작성</Button>
-              <Button type="button" onClick={() => { const session = startFishingSession({ species: quickSpecies, quickStart: true }); setFishingSession(session); setQuickStartOpen(false); }} className="bg-[#5e9bf2] text-white">빠르게 시작</Button>
-            </div>
-          </div>
-        </div>}
 
         <Dialog open={settingsOpen} onOpenChange={setSettingsOpen}>
           <DialogContent className="rounded-[1.5rem] border-[#dbe9fa] bg-[#f7fbff] text-[#29456f]">
@@ -325,16 +351,36 @@ export default function FishingLog() {
   );
 }
 
-function LoginScreen({ error, onLogin }: { error: string; onLogin: () => void }) {
-  return <main className="flex min-h-dvh items-center justify-center bg-[#eaf3ff] p-6 text-[#29456f]"><section className="w-full max-w-sm rounded-[2rem] bg-white p-8 text-center shadow-xl shadow-[#4a8ee8]/15"><div className="mx-auto flex size-20 items-center justify-center rounded-3xl bg-[#edf7ff] text-5xl">🐙</div><p className="mt-6 text-sm font-semibold text-[#7b94ba]">나의 출조 기록</p><h1 className="mt-1 text-3xl font-black text-[#3988f2]">FISH LOG</h1><p className="mt-3 text-sm leading-6 text-[#8298b8]">Google 계정으로 로그인하면 나만의 출조 기록과 물때 설정을 안전하게 저장합니다.</p>{error && <p className="mt-4 rounded-xl bg-red-500/10 px-3 py-2 text-xs text-red-600">{error}</p>}<Button onClick={onLogin} className="mt-6 h-12 w-full rounded-xl bg-white font-bold text-[#3c5d86] ring-1 ring-[#cddff5] hover:bg-[#f5f9ff]">Google로 로그인</Button></section></main>;
-}
-
 function CenteredMessage({ title, description }: { title: string; description: string }) {
   return <main className="flex min-h-dvh items-center justify-center bg-[#eaf3ff] p-6"><div className="text-center"><p className="text-2xl font-black text-[#3988f2]">{title}</p><p className="mt-2 text-sm text-[#8298b8]">{description}</p></div></main>;
 }
 
 function Stat({ label, value }: { label: string; value: string }) { return <div><p className="text-xs text-[#8aa0be]">{label}</p><p className="mt-1 truncate font-bold text-[#29456f]">{value}</p></div>; }
 function Field({ label, children }: { label: string; children: React.ReactNode }) { return <div className="space-y-2"><Label className="text-sm text-[#496789]">{label}</Label>{children}</div>; }
+
+function alignCalendarToLatest(logs: Log[], setMonth: (date: Date) => void) {
+  const current = new Date();
+  const currentMonthKey = `${current.getFullYear()}-${String(current.getMonth() + 1).padStart(2, "0")}`;
+  if (!logs.length || logs.some((log) => log.tripDate.startsWith(currentMonthKey))) return;
+  const latest = logs[0].tripDate;
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(latest)) return;
+  const [year, month] = latest.split("-").map(Number);
+  setMonth(new Date(year, month - 1, 1));
+}
+
+function CalendarViewButton({ active, color, onClick, children }: { active: boolean; color: string; onClick: () => void; children: React.ReactNode }) {
+  return <button type="button" aria-pressed={active} onClick={onClick} className={`inline-flex h-10 items-center gap-1.5 rounded-xl px-3 text-xs font-bold transition ${active ? "bg-[#dfe5ee] text-[#34445b] shadow-inner" : "bg-white text-[#71849d] shadow-sm"}`}><span className="size-3 rounded-[4px]" style={{ backgroundColor: color }} />{children}</button>;
+}
+
+function CalendarMarker({ view, log, catchTotal }: { view: CalendarView; log: Log; catchTotal: number }) {
+  if (view === "point") {
+    return <span className="flex h-7 max-w-full items-center gap-0.5 rounded-full bg-[#e8f4ff] px-1.5 text-[9px] font-black text-[#318dd0] opacity-100"><span className="max-w-[2.2rem] truncate">{pointLabel(log.location)}</span>{catchTotal > 0 && <small className="text-[8px] font-bold text-[#7395b5]">+{catchTotal}</small>}</span>;
+  }
+  if (view === "catch") {
+    return <span className="grid size-7 place-items-center rounded-full bg-[#ff6068] text-[10px] font-black text-white opacity-100 shadow-sm">{catchTotal}</span>;
+  }
+  return <span className="relative flex h-7 items-center justify-center opacity-100"><SpeciesBadge species={log.species} compact />{catchTotal > 0 && <small className="absolute -bottom-1 -right-2 rounded-full bg-white/95 px-1 text-[8px] font-black text-[#697f9b] shadow-sm">+{catchTotal}</small>}</span>;
+}
 
 function RatingSummary({ label, value }: { label: string; value?: number | null }) {
   if (!value) return null;
