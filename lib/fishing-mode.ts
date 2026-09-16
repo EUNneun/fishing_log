@@ -24,7 +24,7 @@ export type HitRecord = {
   memo?: string;
 };
 
-const SESSION_KEY = "fishing_log_active_mode";
+export const SESSION_KEY = "fishing_log_active_mode";
 const HITS_KEY = "fishing_log_hits";
 
 export function getFishingSession(): FishingModeSession | null {

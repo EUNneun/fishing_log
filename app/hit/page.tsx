@@ -1,44 +1,58 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useMemo, useState, useSyncExternalStore } from "react";
 import { useRouter } from "next/navigation";
 import { ArrowLeft, MapPin } from "lucide-react";
 import { Button } from "@/components/ui/button";
-import { getFishingSession, getLastSessionHit, getSessionHits, saveHitRecord } from "@/lib/fishing-mode";
+import { getFishingSession, getLastSessionHit, getSessionHits, saveHitRecord, SESSION_KEY, type FishingModeSession } from "@/lib/fishing-mode";
 import { getFishingOptions } from "@/lib/fishing-data";
+
+function subscribeToSession(callback: () => void) {
+  window.addEventListener("fishing-mode-change", callback);
+  window.addEventListener("storage", callback);
+  return () => {
+    window.removeEventListener("fishing-mode-change", callback);
+    window.removeEventListener("storage", callback);
+  };
+}
+
+function getSessionSnapshot() {
+  try { return window.localStorage.getItem(SESSION_KEY); }
+  catch { return null; }
+}
+
+function getServerSessionSnapshot() { return null; }
 
 export default function HitPage() {
   const router = useRouter();
-  const [session, setSession] = useState<ReturnType<typeof getFishingSession>>(null);
-  const [rig, setRig] = useState("");
-  const [baits, setBaits] = useState<string[]>([]);
-  const [depth, setDepth] = useState("");
+  const snapshot = useSyncExternalStore(subscribeToSession, getSessionSnapshot, getServerSessionSnapshot);
+  const session = useMemo(() => snapshot ? getFishingSession() : null, [snapshot]);
+
+  if (!session) return <main className="mx-auto min-h-screen max-w-md bg-[#f6faff] p-5"><p className="mt-20 text-center text-[#6f89aa]">진행 중인 낚시모드가 없습니다.</p><Button onClick={()=>router.push("/")} className="mt-4 w-full">홈으로</Button></main>;
+
+  return <HitForm key={session.id} session={session} />;
+}
+
+function HitForm({ session }: { session: FishingModeSession }) {
+  const router = useRouter();
+  const previous = useMemo(() => getLastSessionHit(session.id), [session.id]);
+  const hitCount = getSessionHits(session.id).length;
+  const [rig, setRig] = useState(previous?.rig ?? "");
+  const [baits, setBaits] = useState<string[]>(previous?.baits ?? (previous?.bait ? [previous.bait] : []));
+  const [depth, setDepth] = useState(previous?.depth == null ? "" : String(previous.depth));
   const [size, setSize] = useState("");
   const [memo, setMemo] = useState("");
   const [location, setLocation] = useState<{latitude:number;longitude:number;accuracy:number}|null>(null);
-  const [gps, setGps] = useState("GPS 확인 중");
-  const [hitCount, setHitCount] = useState(0);
+  const [gps, setGps] = useState(() => navigator.geolocation ? "GPS 확인 중" : "GPS 미지원");
 
   useEffect(() => {
-    const active = getFishingSession();
-    setSession(active);
-    if (!active) return;
-    const previous = getLastSessionHit(active.id);
-    setHitCount(getSessionHits(active.id).length);
-    if (previous) {
-      setRig(previous.rig ?? "");
-      setBaits(previous.baits ?? (previous.bait ? [previous.bait] : []));
-      setDepth(previous.depth == null ? "" : String(previous.depth));
-    }
-    if (!navigator.geolocation) { setGps("GPS 미지원"); return; }
+    if (!navigator.geolocation) return;
     navigator.geolocation.getCurrentPosition(
       p => { setLocation({latitude:p.coords.latitude, longitude:p.coords.longitude, accuracy:p.coords.accuracy}); setGps(`현재 위치 · 정확도 약 ${Math.round(p.coords.accuracy)}m`); },
       () => setGps("위치 권한을 허용하면 포인트가 저장됩니다."),
       { enableHighAccuracy:true, timeout:10000 }
     );
   }, []);
-
-  if (!session) return <main className="mx-auto min-h-screen max-w-md bg-[#f6faff] p-5"><p className="mt-20 text-center text-[#6f89aa]">진행 중인 낚시모드가 없습니다.</p><Button onClick={()=>router.push("/")} className="mt-4 w-full">홈으로</Button></main>;
 
   const options = getFishingOptions(session?.species ?? "");
   const rigOptions = Array.from(new Set([...options.rigs, ...(rig && !options.rigs.includes(rig) ? [rig] : []), "기타"]));
