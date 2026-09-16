@@ -3,7 +3,7 @@
 import { useEffect } from "react";
 
 const STORAGE_KEY = "fishing-log-app-version";
-const VERSION_URL = "/fishing_log/version.json";
+const VERSION_URL = "/version.json";
 const CHECK_INTERVAL_MS = 60_000;
 
 export default function VersionChecker() {

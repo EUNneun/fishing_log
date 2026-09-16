@@ -37,14 +37,14 @@ type Log = {
 type CalendarView = "point" | "species" | "catch";
 
 const speciesCharacters = {
-  "꽃게": { image: "/fishing_log/species-icons/crab.svg", color: "#368bd0", bg: "#edf7ff" },
-  "참돔": { image: "/fishing_log/species-icons/seabream.svg", color: "#dd6680", bg: "#fff0f3" },
-  "쭈꾸미": { image: "/fishing_log/species-icons/webfoot.svg", color: "#e3675f", bg: "#fff1ed" },
-  "갑오징어": { image: "/fishing_log/species-icons/cuttlefish.svg", color: "#8865c9", bg: "#f4efff" },
-  "한치": { image: "/fishing_log/species-icons/squid.svg", color: "#438dc5", bg: "#edf8ff" },
-  "우럭": { image: "/fishing_log/species-icons/rockfish.svg", color: "#60789f", bg: "#eef3fa" },
-  "가자미": { image: "/fishing_log/species-icons/flounder.svg", color: "#8a765f", bg: "#f7f2ea" },
-  "문어": { image: "/fishing_log/species-icons/octopus.svg", color: "#b86d75", bg: "#fff0f2" },
+  "꽃게": { image: "/species-icons/crab.svg", color: "#368bd0", bg: "#edf7ff" },
+  "참돔": { image: "/species-icons/seabream.svg", color: "#dd6680", bg: "#fff0f3" },
+  "쭈꾸미": { image: "/species-icons/webfoot.svg", color: "#e3675f", bg: "#fff1ed" },
+  "갑오징어": { image: "/species-icons/cuttlefish.svg", color: "#8865c9", bg: "#f4efff" },
+  "한치": { image: "/species-icons/squid.svg", color: "#438dc5", bg: "#edf8ff" },
+  "우럭": { image: "/species-icons/rockfish.svg", color: "#60789f", bg: "#eef3fa" },
+  "가자미": { image: "/species-icons/flounder.svg", color: "#8a765f", bg: "#f7f2ea" },
+  "문어": { image: "/species-icons/octopus.svg", color: "#b86d75", bg: "#fff0f2" },
 } as const;
 
 type SpeciesName = keyof typeof speciesCharacters;
@@ -222,7 +222,7 @@ export default function FishingLog() {
 
   function openRecordPage() {
     const tripDate = selectedDate ? dateKey(selectedDate) : dateKey(new Date());
-    window.location.href = `/fishing_log/record/?date=${tripDate}`;
+    window.location.href = `/record/?date=${tripDate}`;
   }
 
   if (!authReady) return <CenteredMessage title="FISH LOG" description="로그인 정보를 확인하는 중입니다." />;
@@ -293,7 +293,7 @@ export default function FishingLog() {
                 if (!date) return;
                 const key = dateKey(date);
                 if ((logsByDate[key] || []).length === 0) {
-                  window.location.href = `/fishing_log/record/?date=${key}`;
+                  window.location.href = `/record/?date=${key}`;
                   return;
                 }
                 setSelectedDate(date);
@@ -335,7 +335,7 @@ export default function FishingLog() {
               낚시 중 · {fishingSession.species}
               <button type="button" onClick={() => { if (confirm("낚시모드를 종료할까요?")) { stopFishingSession(); setFishingSession(null); } }} className="ml-1 text-white/70">종료</button>
             </div>
-            <Button type="button" onClick={() => { window.location.href = "/fishing_log/hit/"; }} aria-label="히트 기록" className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[60] size-[4.5rem] rounded-full bg-[#ff6262] p-0 text-white shadow-xl shadow-[#ff6262]/30 hover:bg-[#f25555]">
+            <Button type="button" onClick={() => { window.location.href = "/hit/"; }} aria-label="히트 기록" className="fixed bottom-[calc(5.75rem+env(safe-area-inset-bottom))] right-4 z-[60] size-[4.5rem] rounded-full bg-[#ff6262] p-0 text-white shadow-xl shadow-[#ff6262]/30 hover:bg-[#f25555]">
               <span className="text-sm font-black">HIT</span>
             </Button>
           </>

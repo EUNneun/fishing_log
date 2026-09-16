@@ -39,7 +39,7 @@ const speciesMarkerIcons: Record<string, string> = {
 };
 
 function speciesMarkerPath(species: string) {
-  return `/fishing_log/species-icons/${speciesMarkerIcons[species] ?? "rockfish.svg"}`;
+  return `/species-icons/${speciesMarkerIcons[species] ?? "rockfish.svg"}`;
 }
 
 function normalizePoints(hits: HitRecord[]): MappableHit[] {
@@ -193,7 +193,7 @@ function PointSheet({hit,onClose}:{hit:HitRecord;onClose:()=>void}) {
       {(hit.baits?.length ? hit.baits : hit.bait ? hit.bait.split(",").map(v=>v.trim()).filter(Boolean) : []).map(tag=><span key={tag} className="rounded-full bg-[#e8f3ff] px-2.5 py-1 text-xs font-bold text-[#3988f2]">#{tag}</span>)}
       {hit.depth ? <span className="rounded-full bg-[#f1f5f9] px-2.5 py-1 text-xs font-bold text-[#607a9e]">{hit.depth}m</span>:null}
     </div>
-    {hit.tripId ? <a href={`/fishing_log/log-detail/?id=${encodeURIComponent(hit.tripId)}`} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#3988f2] text-sm font-extrabold text-white"><Navigation className="size-4"/>출조기록 상세보기</a> :
+    {hit.tripId ? <a href={`/log-detail/?id=${encodeURIComponent(hit.tripId)}`} className="mt-4 flex h-11 w-full items-center justify-center gap-2 rounded-xl bg-[#3988f2] text-sm font-extrabold text-white"><Navigation className="size-4"/>출조기록 상세보기</a> :
     <div className="mt-4 rounded-xl bg-[#f6f7f9] px-3 py-3 text-center text-xs text-[#8a90a0]">빠른 낚시모드에서 저장된 포인트입니다.</div>}
   </section>;
 }

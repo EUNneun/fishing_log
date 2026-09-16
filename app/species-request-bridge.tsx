@@ -10,7 +10,7 @@ export default function SpeciesRequestBridge() {
   const pathname = usePathname() || "";
 
   useEffect(() => {
-    if (pathname !== "/fishing_log" && pathname !== "/fishing_log/") return;
+    if (pathname !== "/") return;
 
     const addRequestLink = () => {
       const containers = Array.from(document.querySelectorAll<HTMLElement>("div"));

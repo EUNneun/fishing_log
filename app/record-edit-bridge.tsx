@@ -50,7 +50,7 @@ export default function RecordEditBridge() {
       if (!id) return;
       event.preventDefault();
       event.stopPropagation();
-      window.location.href = `/fishing_log/record/?id=${encodeURIComponent(id)}`;
+      window.location.href = `/record/?id=${encodeURIComponent(id)}`;
     };
 
     document.addEventListener("click", click, true);

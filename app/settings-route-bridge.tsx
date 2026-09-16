@@ -11,7 +11,7 @@ export default function SettingsRouteBridge() {
 
       event.preventDefault();
       event.stopPropagation();
-      window.location.href = "/fishing_log/settings/";
+      window.location.href = "/settings/";
     };
 
     document.addEventListener("click", handleClick, true);

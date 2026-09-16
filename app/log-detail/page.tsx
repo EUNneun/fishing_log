@@ -65,7 +65,7 @@ export default function LogDetailPage() {
       const active = getFishingSession();
       if (active?.tripId === trip.id) stopFishingSession();
 
-      window.location.href = "/fishing_log/logs/";
+      window.location.href = "/logs/";
     } catch {
       alert("출조기록을 삭제하지 못했습니다. 잠시 후 다시 시도해주세요.");
       setDeleting(false);
@@ -96,7 +96,7 @@ export default function LogDetailPage() {
         </div>
         {trip.memo && <p className="mt-4 border-t border-[#eef0f5] pt-4 text-sm leading-6 text-[#7e8495]">{trip.memo}</p>}
         <div className="mt-4 grid grid-cols-2 gap-2 border-t border-[#eef0f5] pt-4">
-          <a href={`/fishing_log/record/?id=${encodeURIComponent(trip.id)}`} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#dbe5f1] bg-white text-sm font-extrabold text-[#607a9e]">
+          <a href={`/record/?id=${encodeURIComponent(trip.id)}`} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#dbe5f1] bg-white text-sm font-extrabold text-[#607a9e]">
             <Pencil className="size-4"/>수정
           </a>
           <button type="button" disabled={deleting} onClick={deleteTrip} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#ffd6da] bg-[#fff5f6] text-sm font-extrabold text-[#dc5965] disabled:opacity-50">

@@ -11,9 +11,9 @@ export const metadata: Metadata = {
   title: "피싱로그 | 나의 낚시 기록",
   applicationName: "피싱로그",
   description: "장소, 선사, 선비, 어종, 채비, 날씨와 조과를 한곳에 기록합니다.",
-  manifest: "/fishing_log/manifest.webmanifest",
+  manifest: "/manifest.webmanifest",
   appleWebApp: { capable: true, title: "피싱로그", statusBarStyle: "default" },
-  icons: { icon: "/fishing_log/app-icon.svg", shortcut: "/fishing_log/app-icon.svg", apple: "/fishing_log/app-icon.svg" },
+  icons: { icon: "/app-icon.svg", shortcut: "/app-icon.svg", apple: "/app-icon.svg" },
 };
 
 export default function RootLayout({ children }: Readonly<{ children: React.ReactNode }>) {

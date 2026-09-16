@@ -216,7 +216,7 @@ export default function RecordPage() {
       if (!isFutureTrip && startModeAfterSave) {
         startFishingSession({ tripId: savedId, species: form.species || "기타", location: form.location.trim(), quickStart: false });
       }
-      window.location.href = "/fishing_log/";
+      window.location.href = "/";
     } catch (e) { setError(e instanceof Error ? e.message : "저장하지 못했습니다."); }
     finally { setSaving(false); }
   }

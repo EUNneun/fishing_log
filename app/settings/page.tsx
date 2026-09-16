@@ -41,13 +41,13 @@ export default function SettingsPage() {
   }
 
   async function shareKakao() {
-    const shareData = { title: "FISH LOG", text: "나의 출조 기록을 간편하게 관리하는 피싱로그", url: "https://eunneun.github.io/fishing_log/" };
+    const shareData = { title: "FISH LOG", text: "나의 출조 기록을 간편하게 관리하는 피싱로그", url: "https://fishing.eunlab.com/" };
     if (navigator.share) { try { await navigator.share(shareData); return; } catch { return; } }
     try { await navigator.clipboard.writeText(shareData.url); setMessage("피싱로그 주소를 복사했습니다. 카카오톡에 붙여넣어 공유해주세요."); }
     catch { setMessage("공유 링크를 복사하지 못했습니다."); }
   }
 
-  async function logout() { await signOut(auth); window.location.href = "/fishing_log/"; }
+  async function logout() { await signOut(auth); window.location.href = "/"; }
 
   if (!authReady) return <main className="min-h-dvh bg-[#eaf3ff] p-6 text-center text-[#8298b8]">로그인 정보를 확인하는 중입니다.</main>;
   if (!user) return <main className="min-h-dvh bg-[#eaf3ff] p-6 text-center text-[#29456f]">로그인이 필요합니다.</main>;

@@ -4,10 +4,10 @@ import { usePathname } from "next/navigation";
 import { BarChart3, CalendarDays, ClipboardList, MapPinned } from "lucide-react";
 
 const items = [
-  { href: "/fishing_log/", label: "홈", icon: CalendarDays, match: (p: string) => p === "/fishing_log" || p === "/fishing_log/" },
-  { href: "/fishing_log/logs/", label: "기록", icon: ClipboardList, match: (p: string) => p.includes("/logs") || p.includes("/log-detail") },
-  { href: "/fishing_log/points/", label: "포인트", icon: MapPinned, match: (p: string) => p.includes("/points") },
-  { href: "/fishing_log/report/", label: "리포트", icon: BarChart3, match: (p: string) => p.includes("/report") },
+  { href: "/", label: "홈", icon: CalendarDays, match: (p: string) => p === "/" },
+  { href: "/logs/", label: "기록", icon: ClipboardList, match: (p: string) => p.includes("/logs") || p.includes("/log-detail") },
+  { href: "/points/", label: "포인트", icon: MapPinned, match: (p: string) => p.includes("/points") },
+  { href: "/report/", label: "리포트", icon: BarChart3, match: (p: string) => p.includes("/report") },
 ];
 
 export default function BottomNav() {
