@@ -3,10 +3,11 @@
 import { useEffect, useState } from "react";
 import { ArrowLeft, MapPin, Pencil, Ruler, Trash2, Waves } from "lucide-react";
 import { onAuthStateChanged, type User } from "firebase/auth";
-import { deleteDoc, doc, getDoc } from "firebase/firestore";
+import { doc, getDoc, writeBatch } from "firebase/firestore";
 import { auth, db } from "@/lib/firebase";
 import { deleteGuestLog, getGuestLog } from "@/lib/guest-storage";
-import { deleteTripHits, getFishingSession, getTripHits, stopFishingSession, type HitRecord } from "@/lib/fishing-mode";
+import { deleteTripHits, getFishingSession, stopFishingSession, type HitRecord } from "@/lib/fishing-mode";
+import { loadHitRecords, removePendingTripHits } from "@/lib/cloud-hits";
 
 type Trip = {
   id: string;
@@ -30,27 +31,42 @@ export default function LogDetailPage() {
   const [hits,setHits]=useState<HitRecord[]>([]);
   const [loading,setLoading]=useState(true);
   const [deleting,setDeleting]=useState(false);
+  const [hitError,setHitError]=useState("");
 
-  useEffect(() => onAuthStateChanged(auth, async next => {
+  useEffect(() => {
+    let request = 0;
+    const unsubscribe = onAuthStateChanged(auth, async next => {
+    const current = ++request;
+    setLoading(true);
     setUser(next);
+    setTrip(null);
+    setHits([]);
     const id = new URLSearchParams(window.location.search).get("id");
     if (!id) { setLoading(false); return; }
     try {
+      const loaded = await loadHitRecords(next);
+      if (current !== request) return;
+      setHitError(loaded.error);
       if (next) {
         const snap = await getDoc(doc(db,"users",next.uid,"logs",id));
+        if (current !== request) return;
         if (snap.exists()) setTrip({id:snap.id,...snap.data()} as Trip);
       } else {
         setTrip(getGuestLog<Trip>(id));
       }
-      setHits(getTripHits(id).sort((a,b)=>a.caughtAt.localeCompare(b.caughtAt)));
+      setHits(loaded.hits.filter(hit => hit.tripId === id).sort((a,b)=>a.caughtAt.localeCompare(b.caughtAt)));
+    } catch {
+      if (current === request) setHitError("출조기록을 불러오지 못했습니다. 연결을 확인해주세요.");
     } finally {
-      setLoading(false);
+      if (current === request) setLoading(false);
     }
-  }), []);
+    });
+    return () => { request++; unsubscribe(); };
+  }, []);
 
 
   async function deleteTrip() {
-    if (!trip || deleting) return;
+    if (!trip || deleting || hitError) return;
     const hitCount = hits.length;
     const message = hitCount > 0
       ? `이 출조기록과 연결된 HIT ${hitCount}건도 함께 삭제됩니다. 삭제할까요?`
@@ -58,10 +74,17 @@ export default function LogDetailPage() {
     if (!confirm(message)) return;
     setDeleting(true);
     try {
-      if (user) await deleteDoc(doc(db,"users",user.uid,"logs",trip.id));
-      else deleteGuestLog(trip.id);
-
-      deleteTripHits(trip.id);
+      if (user) {
+        if (hits.length >= 499) throw new Error("삭제 가능한 HIT 건수를 초과했습니다.");
+        const batch = writeBatch(db);
+        batch.delete(doc(db,"users",user.uid,"logs",trip.id));
+        for (const hit of hits) batch.delete(doc(db,"users",user.uid,"hits",hit.id));
+        await batch.commit();
+        removePendingTripHits(user, trip.id);
+      } else {
+        deleteGuestLog(trip.id);
+        deleteTripHits(trip.id);
+      }
       const active = getFishingSession();
       if (active?.tripId === trip.id) stopFishingSession();
 
@@ -99,12 +122,13 @@ export default function LogDetailPage() {
           <a href={`/record/?id=${encodeURIComponent(trip.id)}`} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#dbe5f1] bg-white text-sm font-extrabold text-[#607a9e]">
             <Pencil className="size-4"/>수정
           </a>
-          <button type="button" disabled={deleting} onClick={deleteTrip} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#ffd6da] bg-[#fff5f6] text-sm font-extrabold text-[#dc5965] disabled:opacity-50">
+          <button type="button" disabled={deleting || Boolean(hitError)} onClick={deleteTrip} className="flex h-11 items-center justify-center gap-2 rounded-xl border border-[#ffd6da] bg-[#fff5f6] text-sm font-extrabold text-[#dc5965] disabled:opacity-50">
             <Trash2 className="size-4"/>{deleting ? "삭제 중..." : "삭제"}
           </button>
         </div>
       </div>
 
+      {hitError && <p className="rounded-xl bg-[#fff4e7] px-4 py-3 text-sm text-[#9b6b36]">{hitError} HIT를 확인할 수 없어 삭제 기능을 잠시 사용할 수 없습니다.</p>}
       {!upcoming && <div className="rounded-[22px] border border-[#e3e7f0] bg-white p-5">
         <div className="flex items-end justify-between">
           <div><p className="text-xs font-semibold text-[#8a90a0]">HIT HISTORY</p><h2 className="mt-1 text-lg font-extrabold text-[#2f3142]">히트 기록</h2></div>

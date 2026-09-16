@@ -1,8 +1,11 @@
 "use client";
 
 import { useEffect, useMemo, useRef, useState } from "react";
+import { onAuthStateChanged } from "firebase/auth";
 import { MapPin, Navigation, X } from "lucide-react";
-import { getHitRecords, type HitRecord } from "@/lib/fishing-mode";
+import { auth } from "@/lib/firebase";
+import { loadHitRecords } from "@/lib/cloud-hits";
+import { type HitRecord } from "@/lib/fishing-mode";
 
 type LatLng = [number, number];
 type LeafletMap = {
@@ -11,7 +14,7 @@ type LeafletMap = {
   invalidateSize: () => void;
   remove: () => void;
 };
-type LeafletMarker = { on: (event: string, handler: () => void) => void };
+type LeafletMarker = { on: (event: string, handler: () => void) => void; remove: () => void };
 type LeafletApi = {
   map: (element: HTMLDivElement, options: Record<string, unknown>) => LeafletMap;
   tileLayer: (url: string, options: Record<string, unknown>) => { addTo: (map: LeafletMap) => void };
@@ -44,11 +47,34 @@ function speciesMarkerPath(species: string) {
 
 function normalizePoints(hits: HitRecord[]): MappableHit[] {
   return hits.flatMap((hit) => {
+    if (hit.latitude == null || hit.longitude == null) return [];
     const latitude = Number(hit.latitude);
     const longitude = Number(hit.longitude);
     if (!Number.isFinite(latitude) || !Number.isFinite(longitude) || Math.abs(latitude) > 90 || Math.abs(longitude) > 180) return [];
     return [{ ...hit, latitude, longitude }];
   });
+}
+
+function drawMarkers(map: LeafletMap, L: LeafletApi, points: MappableHit[], markers: LeafletMarker[], select: (hit: HitRecord) => void) {
+  markers.forEach((marker) => marker.remove());
+  markers.length = 0;
+  if (!points.length) return;
+  const bounds: LatLng[] = [];
+  const seenPositions = new Map<string, number>();
+  points.forEach((hit) => {
+    const [lat, lng] = spreadMarkerPosition(hit, seenPositions);
+    bounds.push([lat, lng]);
+    const markerImage = speciesMarkerPath(hit.species);
+    const icon = L.divIcon({
+      className: "",
+      html: `<div style="width:44px;height:44px;border-radius:50%;background:#f2f8ff;border:3px solid white;box-shadow:0 3px 10px rgba(27,65,105,.28);display:grid;place-items:center;overflow:hidden"><img src="${markerImage}" alt="" style="display:block;width:40px;height:40px;object-fit:contain" /></div>`,
+      iconSize: [44, 44], iconAnchor: [22, 22],
+    });
+    const marker = L.marker([lat, lng], { icon }).addTo(map);
+    marker.on("click", () => select(hit));
+    markers.push(marker);
+  });
+  map.fitBounds(bounds, { padding: [44, 44], maxZoom: 17 });
 }
 
 function spreadMarkerPosition(hit: MappableHit, seen: Map<string, number>) {
@@ -69,14 +95,38 @@ function spreadMarkerPosition(hit: MappableHit, seen: Map<string, number>) {
 export default function PointsPage() {
   const mapRef = useRef<HTMLDivElement>(null);
   const mapInstance = useRef<LeafletMap | null>(null);
+  const markerInstances = useRef<LeafletMarker[]>([]);
+  const pointsRef = useRef<MappableHit[]>([]);
   const [hits,setHits]=useState<HitRecord[]>([]);
   const [selected,setSelected]=useState<SelectedPoint>(null);
   const [mapError,setMapError]=useState("");
+  const [dataError,setDataError]=useState("");
+  const [loading,setLoading]=useState(true);
 
   const points = useMemo(() => normalizePoints(hits), [hits]);
 
   useEffect(() => {
-    queueMicrotask(() => setHits(getHitRecords()));
+    let active = true;
+    let request = 0;
+    const unsubscribe = onAuthStateChanged(auth, (user) => {
+      const current = ++request;
+      setLoading(true);
+      setHits([]);
+      void loadHitRecords(user).then(({ hits: loaded, error }) => {
+        if (!active || current !== request) return;
+        setHits(loaded);
+        setDataError(error);
+      }).finally(() => { if (active && current === request) setLoading(false); });
+    });
+    return () => { active = false; unsubscribe(); };
+  }, []);
+
+  useEffect(() => {
+    pointsRef.current = points;
+    if (mapInstance.current && window.L) drawMarkers(mapInstance.current, window.L, points, markerInstances.current, setSelected);
+  }, [points]);
+
+  useEffect(() => {
 
     const cssId = "leaflet-css";
     if (!document.getElementById(cssId)) {
@@ -100,40 +150,22 @@ export default function PointsPage() {
 
       L.control.zoom({ position:"topright" }).addTo(map);
 
-      const currentHits = normalizePoints(getHitRecords());
-      if (currentHits.length) {
-        const bounds: LatLng[] = [];
-        const seenPositions = new Map<string, number>();
-        currentHits.forEach((hit) => {
-          const [lat, lng] = spreadMarkerPosition(hit, seenPositions);
-          bounds.push([lat,lng]);
-          const markerImage = speciesMarkerPath(hit.species);
-
-          const icon = L.divIcon({
-            className: "",
-            html: `<div style="width:44px;height:44px;border-radius:50%;background:#f2f8ff;border:3px solid white;box-shadow:0 3px 10px rgba(27,65,105,.28);display:grid;place-items:center;overflow:hidden"><img src="${markerImage}" alt="" style="display:block;width:40px;height:40px;object-fit:contain" /></div>`,
-            iconSize:[44,44],
-            iconAnchor:[22,22]
-          });
-
-          const marker = L.marker([lat,lng],{icon}).addTo(map);
-          marker.on("click",()=>setSelected(hit));
-        });
-        map.fitBounds(bounds,{padding:[44,44],maxZoom:17});
-      }
+      drawMarkers(map, L, pointsRef.current, markerInstances.current, setSelected);
 
       setTimeout(()=>map.invalidateSize(),100);
     };
 
-    if (window.L) {
-      init();
-      return;
-    }
+    const cleanup = () => {
+      markerInstances.current = [];
+      mapInstance.current?.remove();
+      mapInstance.current = null;
+    };
+    if (window.L) { init(); return cleanup; }
 
     const existing = document.getElementById("leaflet-js") as HTMLScriptElement | null;
     if (existing) {
       existing.addEventListener("load",init,{once:true});
-      return () => existing.removeEventListener("load",init);
+      return () => { existing.removeEventListener("load",init); cleanup(); };
     }
 
     const script = document.createElement("script");
@@ -144,12 +176,7 @@ export default function PointsPage() {
     script.onerror = () => setMapError("지도를 불러오지 못했습니다. 인터넷 연결을 확인해주세요.");
     document.body.appendChild(script);
 
-    return () => {
-      if (mapInstance.current) {
-        mapInstance.current.remove();
-        mapInstance.current = null;
-      }
-    };
+    return cleanup;
   }, []);
 
   return <main className="min-h-dvh bg-[#eef1f8]">
@@ -163,9 +190,9 @@ export default function PointsPage() {
         </div>
       </header>
 
-      {mapError && <div className="absolute left-4 right-4 top-24 z-[450] rounded-xl bg-white px-4 py-3 text-sm text-red-600 shadow">{mapError}</div>}
+      {(mapError || dataError) && <div className="absolute left-4 right-4 top-24 z-[450] rounded-xl bg-white px-4 py-3 text-sm text-red-600 shadow">{mapError || dataError}</div>}
 
-      {points.length === 0 && !mapError && <div className="absolute left-1/2 top-1/2 z-[350] w-[82%] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white/95 p-6 text-center shadow-lg">
+      {!loading && points.length === 0 && !mapError && !dataError && <div className="absolute left-1/2 top-1/2 z-[350] w-[82%] -translate-x-1/2 -translate-y-1/2 rounded-2xl bg-white/95 p-6 text-center shadow-lg">
         <MapPin className="mx-auto size-8 text-[#74a9e8]"/>
         <p className="mt-3 font-extrabold text-[#394154]">저장된 히트 포인트가 없습니다.</p>
         <p className="mt-1 text-xs leading-5 text-[#8a90a0]">낚시모드에서 HIT를 기록하면 GPS 위치가 이 지도에 쌓입니다.</p>

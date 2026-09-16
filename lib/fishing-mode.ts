@@ -25,7 +25,7 @@ export type HitRecord = {
 };
 
 export const SESSION_KEY = "fishing_log_active_mode";
-const HITS_KEY = "fishing_log_hits";
+export const HITS_KEY = "fishing_log_hits";
 
 export function getFishingSession(): FishingModeSession | null {
   if (typeof window === "undefined") return null;
@@ -57,10 +57,15 @@ export function getHitRecords(): HitRecord[] {
   if (typeof window === "undefined") return [];
   try {
     const raw = localStorage.getItem(HITS_KEY);
-    return raw ? JSON.parse(raw) : [];
+    const hits: unknown = raw ? JSON.parse(raw) : [];
+    return Array.isArray(hits) ? hits as HitRecord[] : [];
   } catch {
     return [];
   }
+}
+
+export function clearHitRecords() {
+  localStorage.removeItem(HITS_KEY);
 }
 
 export function saveHitRecord(hit: HitRecord) {
