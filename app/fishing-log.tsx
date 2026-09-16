@@ -15,6 +15,7 @@ import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { auth, db, googleProvider } from "@/lib/firebase";
 import { getGuestLogs, getGuestSettings, migrateGuestData, saveGuestSettings } from "@/lib/guest-storage";
 import { getFishingSession, startFishingSession, stopFishingSession, type FishingModeSession } from "@/lib/fishing-mode";
+import { TripPointLabel, useTripPoints } from "@/lib/use-trip-points";
 
 type Log = {
   id: string;
@@ -121,6 +122,7 @@ export default function FishingLog() {
   const [settings, setSettings] = useState<UserSettings>(defaultSettings);
   const [holidays, setHolidays] = useState<Record<string, string>>({});
   const [compactHeader, setCompactHeader] = useState(false);
+  const points = useTripPoints();
 
   useEffect(() => onAuthStateChanged(auth, (nextUser) => {
     setUser(nextUser);
@@ -314,7 +316,7 @@ export default function FishingLog() {
               } }} />
             </div>
             <div className="mt-4">
-              {selectedDate ? <><div className="mb-3 flex items-center justify-between"><h2 className="font-bold text-[#29456f]">{selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 기록</h2><span className="text-sm text-[#8298b8]">{selectedLogs.length}건</span></div>{selectedLogs.length ? <LogCards logs={selectedLogs} money={money} /> : <div className="rounded-2xl border border-dashed border-[#bdd6f4] bg-white p-6 text-center text-sm text-[#8298b8]">이날은 아직 출조 기록이 없어요.</div>}</> : <div className="rounded-2xl bg-[#eaf4ff] px-4 py-3 text-center text-sm text-[#6e8caf]">표시가 있는 날짜를 누르면 출조 기록을 볼 수 있어요.</div>}
+              {selectedDate ? <><div className="mb-3 flex items-center justify-between"><h2 className="font-bold text-[#29456f]">{selectedDate.getMonth() + 1}월 {selectedDate.getDate()}일 기록</h2><span className="text-sm text-[#8298b8]">{selectedLogs.length}건</span></div>{selectedLogs.length ? <LogCards logs={selectedLogs} money={money} points={points} /> : <div className="rounded-2xl border border-dashed border-[#bdd6f4] bg-white p-6 text-center text-sm text-[#8298b8]">이날은 아직 출조 기록이 없어요.</div>}</> : <div className="rounded-2xl bg-[#eaf4ff] px-4 py-3 text-center text-sm text-[#6e8caf]">표시가 있는 날짜를 누르면 출조 기록을 볼 수 있어요.</div>}
             </div>
             <div className="mt-4 flex flex-wrap justify-center gap-2" aria-label="지원 어종">
               {speciesNames.map((name) => <SpeciesBadge key={name} species={name} showName />)}
@@ -324,7 +326,7 @@ export default function FishingLog() {
           </TabsContent>
           <TabsContent value="list">
             <div className="mb-4 flex items-center justify-between"><h2 className="text-lg font-bold text-[#29456f]">최근 출조</h2><span className="text-sm text-[#8298b8]">총 {logs.length}건</span></div>
-            {loading ? <div className="rounded-2xl bg-white p-6 text-center text-[#8298b8] shadow-sm">기록을 불러오는 중...</div> : logs.length === 0 ? <div className="rounded-[1.5rem] border border-dashed border-[#a7c9f5] bg-white px-6 py-10 text-center shadow-sm"><Anchor className="mx-auto size-9 text-[#4c98ef]" /><p className="mt-4 font-bold text-[#29456f]">첫 출조를 기록해보세요</p><p className="mt-1 text-sm text-[#8298b8]">기억보다 기록이 오래갑니다.</p></div> : <LogCards logs={logs} money={money} />}
+            {loading ? <div className="rounded-2xl bg-white p-6 text-center text-[#8298b8] shadow-sm">기록을 불러오는 중...</div> : logs.length === 0 ? <div className="rounded-[1.5rem] border border-dashed border-[#a7c9f5] bg-white px-6 py-10 text-center shadow-sm"><Anchor className="mx-auto size-9 text-[#4c98ef]" /><p className="mt-4 font-bold text-[#29456f]">첫 출조를 기록해보세요</p><p className="mt-1 text-sm text-[#8298b8]">기억보다 기록이 오래갑니다.</p></div> : <LogCards logs={logs} money={money} points={points} />}
           </TabsContent>
         </Tabs>
 
@@ -404,7 +406,7 @@ function SpeciesBadge({ species, compact = false, showName = false, calendar = f
   return <span className={`inline-flex items-center justify-center overflow-hidden font-bold ${compact ? `${compactSize} rounded-full ring-2 ring-white` : "gap-1.5 rounded-full py-1 pl-1 pr-2.5 text-xs"}`} style={{ color: character.color, backgroundColor: character.bg }} title={species}><span aria-hidden className={compact ? `${compactSize} shrink-0` : "size-7 shrink-0"} style={{ backgroundImage: `url('${character.image}')`, backgroundPosition: "center", backgroundRepeat: "no-repeat", backgroundSize: "contain" }} />{showName && <span>{species}</span>}</span>;
 }
 
-function LogCards({ logs, money }: { logs: Log[]; money: Intl.NumberFormat }) {
+function LogCards({ logs, money, points }: { logs: Log[]; money: Intl.NumberFormat; points: ReturnType<typeof useTripPoints> }) {
   return <div className="space-y-3">{logs.map((log) => {
     const hasRatings = Boolean(log.boatCondition || log.captainSkill || log.mealRating);
     const upcoming = isFutureLog(log);
@@ -413,6 +415,7 @@ function LogCards({ logs, money }: { logs: Log[]; money: Intl.NumberFormat }) {
       <div className="mt-4 grid grid-cols-2 gap-x-3 gap-y-2 text-sm text-[#607a9e]"><span className="flex items-center gap-2"><MapPin className="size-4 text-[#74a9e8]" />{log.location}</span><span className="flex items-center gap-2"><ShipWheel className="size-4 text-[#74a9e8]" />{log.boatName}</span><span className="flex items-center gap-2"><WalletCards className="size-4 text-[#74a9e8]" />{money.format(log.fee)}원</span><span className="flex items-center gap-2"><Waves className="size-4 text-[#74a9e8]" />{upcoming ? (log.rig || "일정 등록") : `${log.weather}${log.rig ? ` · ${log.rig}` : ""}`}</span></div>
       {hasRatings && <div className="mt-3 rounded-xl bg-[#f6faff] px-3 py-2.5 text-xs text-[#6f87a5]"><p className="mb-2 font-bold text-[#496789]">선사 컨디션</p><div className="space-y-1.5"><RatingSummary label="배 컨디션" value={log.boatCondition} /><RatingSummary label="선장님 조타 실력" value={log.captainSkill} /><RatingSummary label="간식/식사" value={log.mealRating} /></div></div>}
       {log.memo && <p className="mt-3 border-t border-[#e6effb] pt-3 text-sm leading-6 text-[#7c91ad]">{log.memo}</p>}
+      <div className="mt-3 border-t border-[#e6effb] pt-3"><TripPointLabel tripId={log.id} {...points} /></div>
     </article>;
   })}</div>;
 }
